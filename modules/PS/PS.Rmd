@@ -1,0 +1,208 @@
+---
+title: "PS Manual"
+subtitle: "v.`r SpaDES.core::moduleMetadata(module = 'PS', path = '..')$version`"
+date: "Last updated: `r Sys.Date()`"
+output:
+  bookdown::html_document2:
+    toc: true
+    toc_float: true
+    theme: sandstone
+    number_sections: false
+    df_print: paged
+    keep_md: yes
+editor_options:
+  chunk_output_type: console
+  bibliography: citations/references_PS.bib
+citation-style: citations/ecology-letters.csl
+link-citations: true
+always_allow_html: true
+---
+
+# PS Module
+
+<!-- the following are text references used in captions for LaTeX compatibility -->
+(ref:PS) *PS*
+
+```{r setup-PS, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, eval = FALSE, results = "hold") ## change to eval = TRUE if all chunks are to be evaluated
+
+## get citation style
+if (!file.exists("citations/ecology-letters.csl")) {
+  dir.create("citations", showWarnings = FALSE)
+  download.file("https://www.zotero.org/styles/ecology-letters", destfile = "citations/ecology-letters.csl")
+}
+
+if (!require(dplyr)) {
+  install.packages("dplyr")
+  library(dplyr)
+}
+
+dir.create("figures", showWarnings = FALSE)
+
+download.file(
+  url = "https://img.shields.io/badge/Made%20with-Markdown-1f425f.png",
+  destfile = "figures/markdownBadge.png",
+  mode = "wb"
+)
+```
+
+[![made-with-Markdown](figures/markdownBadge.png)](https://commonmark.org)
+
+<!-- if knitting to pdf remember to add the pandoc_args: ["--extract-media", "."] option to yml in order to get the badge images -->
+
+#### Authors:
+
+`r paste(as.character(SpaDES.core::moduleMetadata(module = "PS", path = '..')$authors), sep = ', ')`
+<!-- ideally separate authors with new lines, '\n' not working -->
+
+## Module Overview
+
+### Module summary
+
+Provide a brief summary of what the module does / how to use the module.
+
+Module documentation should be written so that others can use your module.
+This is a template for module documentation, and should be changed to reflect your module.
+
+### Module inputs and parameters
+
+Describe input data required by the module and how to obtain it (e.g., directly from online sources or supplied by other modules)
+If `sourceURL` is specified, `downloadData("PS", "C:/Users/RALAS6/Documents/Repositories/SpaDES/modules")` may be sufficient.
+Table \@ref(tab:moduleInputs-PS) shows the full list of module inputs.
+
+```{r moduleInputs-PS, echo = FALSE, eval = TRUE, message = FALSE, warning = FALSE}
+df_inputs <- SpaDES.core::moduleInputs("PS", "C:/Users/RALAS6/Documents/Repositories/SpaDES/modules")
+knitr::kable(df_inputs,
+  caption = "List of (ref:PS) input objects and their description."
+) %>%
+  kableExtra::kable_styling(latex_options = "scale_down", full_width = TRUE)
+```
+
+Provide a summary of user-visible parameters (Table \@ref(tab:moduleParams-PS))
+
+
+```{r moduleParams-PS, echo = FALSE, eval = TRUE, message = FALSE, warning = FALSE}
+df_params <- SpaDES.core::moduleParams("PS", "C:/Users/RALAS6/Documents/Repositories/SpaDES/modules")
+knitr::kable(df_params, caption = "List of (ref:PS) parameters and their description.") %>%
+  kableExtra::kable_styling(latex_options = "scale_down", full_width = TRUE)
+```
+
+### Events
+
+Describe what happens for each event type.
+
+### Plotting
+
+Write what is plotted.
+
+### Saving
+
+Write what is saved.
+
+### Module outputs
+
+Description of the module outputs (Table \@ref(tab:moduleOutputs-PS)).
+
+```{r moduleOutputs-PS, echo = FALSE, eval = TRUE, message = FALSE, warning = FALSE}
+df_outputs <- SpaDES.core::moduleOutputs("PS", "C:/Users/RALAS6/Documents/Repositories/SpaDES/modules")
+knitr::kable(df_outputs, caption = "List of (ref:PS) outputs and their description.") %>%
+  kableExtra::kable_styling(latex_options = "scale_down", full_width = TRUE)
+```
+
+### Links to other modules
+
+Describe any anticipated linkages to other modules, such as modules that supply input data or do post-hoc analysis.
+
+### Getting help
+
+-   provide a way for people to obtain help (e.g., module repository issues page)
+
+# Example of code to run module
+
+```{r moduleRun}
+library("conflicted")
+library("SpaDES.core")
+
+options(spades.useRequire = FALSE)
+
+## make a list of directory paths
+inputsDir <- checkPath("../../inputs", create = TRUE)
+outputsDir <- checkPath("../../outputs", create = TRUE)
+downloadFolderArea <- checkPath(file.path(inputsDir, "studyArea/CH1PiecewiseSmoothing/studyArea_AB_BCR6"), create = TRUE)
+downloadFolderForestClass <- checkPath(file.path(inputsDir, "forestClassRasters"), create = TRUE)
+downloadFolderBird <- checkPath(file.path(inputsDir, "birdRasterFiles"), create = TRUE)
+outputFolderBirdPreds <- checkPath(file.path(outputsDir, "outputBirdPreds"), create = TRUE)
+outputFolderBirdPredsRasters <- checkPath(file.path(outputsDir, "outputBirdPredsRasters"), create = TRUE)
+setPaths(
+  modulePath = file.path("../../modules"),
+  cachePath = file.path("../../cache"),
+  scratchPath = file.path("../../scratch"),
+  inputPath = inputsDir,
+  outputPath = outputsDir
+)
+
+simPaths <- getPaths()
+
+
+# parameters from local
+birdList <- sort(c("CAWA", "OVEN"))
+# AB study Area bird list (25% prob of occurrence in 1% of the area)
+# birdList <- sort(c("ALFL", "AMGO", "AMRO", "BARS", "BBWA", "BCCH", "BHCO", "BOCH",
+#                    "BRBL", "BRCR", "CCSP", "CEDW", "CHSP", "CLSW", "CMWA", "COYE",
+#                    "DEJU", "GCKI", "GRAJ", "HETH", "HOWR", "LEFL", "MOWA", "OVEN",
+#                    "PAWA", "RBNU", "RCKI", "REVI", "SWTH", "TEWA", "YRWA"))
+
+rasterToMatchLocation <- inputsDir
+rasterToMatchName <- "LCC2005_V1_4a.tif"
+studyAreaLocation <- downloadFolderArea
+nameBCR <- "60"
+
+.studyAreaName <- "studyArea_AB_BCR6.shp"
+
+nameForClassRaster <- "vegTypesRas_AB_BCR6_2011"
+folderUrlForClass <- downloadFolderForestClass
+
+nameLandClassRaster <- "landCoverRas_AB_BCR6_2010"
+folderUrlLandClass <- downloadFolderForestClass
+
+nameAgeRaster <- "ageRas_AB_BCR6_2011"
+folderUrlAge <- downloadFolderForestClass
+folderUrlBirdRaster <- downloadFolderBird
+
+
+## Set simulation and module parameters
+simModules <- list("PS")
+simTimes <- list(start = 1, end = 1, timeunit = "year")
+simParams <- list(
+  PS = list(
+    doPredsInitialTime = 1,
+    .plotInitialTime = 1,
+    .saveInitialTime = 1,
+    classOnly = FALSE,
+    nTrees = 5000,
+    ageGrouping = 20,
+    maxAgeClass = 10,
+    birdList = birdList,
+    .studyAreaName = .studyAreaName,
+    rasterToMatchLocation = rasterToMatchLocation,
+    rasterToMatchName = rasterToMatchName,
+    studyAreaLocation = studyAreaLocation,
+    nameBCR = nameBCR,
+    nameForClassRaster = nameForClassRaster,
+    folderUrlForClass = folderUrlForClass,
+    nameLandClassRaster = nameLandClassRaster,
+    folderUrlLandClass = folderUrlLandClass,
+    nameAgeRaster = nameAgeRaster,
+    folderUrlAge = folderUrlAge
+  )
+)
+
+
+## Simulation setup
+mySim <- simInit(
+  times = simTimes, params = simParams,
+  modules = simModules, paths = simPaths
+)
+
+test <- spades(mySim)
+```
