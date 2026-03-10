@@ -1,1 +1,1 @@
-# PiecewiseSmoothingPaper
+# PiecewiseSmoothing
