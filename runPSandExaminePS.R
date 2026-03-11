@@ -3,7 +3,7 @@ library("SpaDES.core")
 
 options(spades.useRequire = FALSE)
 
-## make a list of directory paths
+## set paths ####
 setPaths(
   modulePath = file.path("./modules"),
   cachePath = file.path("./cache"),
@@ -13,19 +13,25 @@ setPaths(
 )
 simPaths <- getPaths()
 
-# specifiy where outputs go
+# specify where outputs go ####
+
 runName <- "17x10YrAgeClasses" #put results for each set of age classes or different study area in named folder
 outputFolderSpPreds <- checkPath(file.path(Paths$outputPath, runName, "spPreds/"), create = TRUE)
 outputFolderSpPredsRasters <- checkPath(file.path(Paths$outputPath, runName, "spPredsRasters"), create = TRUE)
 
-# specify where inputs come from
-locationRasterToMatch <- Paths$inputPath
-rasterToMatchName <- "ALFL-meanBoot_BCR-60_studyArea_AB_BCR6"
+# specify inputs and input paths (to be provided as parameters), and download example input files ####
 
-locationStudyArea <- checkPath(file.path(Paths$inputPath, "studyArea/studyArea_AB_BCR6"), create = TRUE)
+#studyArea
+locationStudyArea <- checkPath(file.path(Paths$inputPath, "studyArea"), create = TRUE)
 .studyAreaName <- "studyArea_AB_BCR6.shp"
+zen4R::download_zenodo(doi = "10.5281/zenodo.17409820", path = locationStudyArea)
+unzip(file.path(locationStudyArea, paste(tools::file_path_sans_ext(.studyAreaName), ".zip", sep = "")), exdir = locationStudyArea)
+locationStudyArea <- file.path(Paths$inputPath, "studyArea", tools::file_path_sans_ext(.studyAreaName))
 
+#landscape rasters
 locationLandscapeRasters <- checkPath(file.path(Paths$inputPath, "landscapeRasters"), create = TRUE)
+zen4R::download_zenodo(doi = "10.5281/zenodo.17410019", path = locationLandscapeRasters)
+unzip(file.path(locationLandscapeRasters, "landscapeRasters.zip"), exdir = locationLandscapeRasters)
 
 nameForClassRas <- "vegTypesRas_AB_BCR6_2011"
 locationForClass <- locationLandscapeRasters
@@ -36,26 +42,37 @@ locationLandClass <- locationLandscapeRasters
 nameAgeRas <- "ageRas_AB_BCR6_2011"
 locationAge <- locationLandscapeRasters
 
-locationSpRas <- checkPath(file.path(Paths$inputPath, "meanSpRasters"), create = TRUE)
+#species rasters
+locationSpRas <- checkPath(file.path(Paths$inputPath), create = TRUE)
+zen4R::download_zenodo(doi = "10.5281/zenodo.17516504", path = locationSpRas)
+unzip(file.path(locationSpRas, "meanSpRasters.zip"), exdir = locationSpRas)
+locationSpRas <- file.path(Paths$inputPath, "meanSpRasters")
 
-# specify BCR
+#specify rasterToMatch - this can be any raster that covers the whole study area at the desired resolution
+locationRasterToMatch <- locationSpRas #here I use one of the species rasters
+rasterToMatchName <- "ALFL-meanBoot_BCR-60_studyArea_AB_BCR6"
+
+# specify BCR (to be provided as parameter)
 nameBCR <- "60"
 
-# get species list 
-spList <- sort(c("OVEN")) # tester list
+# provide species list (to be provided as parameter) ####
+spList <- sort(c("ALFL", "OVEN")) # tester list
 # spList <- sort(c(
 #   "ALFL", "BBWA", "BCCH", "BOCH", "BRCR", "CMWA", "COYE",
 #   "DEJU", "GCKI", "GRAJ", "LEFL", "MOWA", "OVEN", "PAWA",
 #   "RBNU", "RCKI", "REVI", "SWTH", "TEWA", "YRWA"
 # ))
-#TODO: get a list of species from inputs?####
 
-#download species and landscape rasters
-# TODO: figure this bit out ####
+# #read spList from csv file (as saved from birdRange module)
+# speciesListName <- "speciesList"
+# speciesListLocation <- checkPath(file.path(Paths$inputPath, "speciesList"), create = TRUE)
+# 
+# spList <- read.csv(file.path(speciesListLocation, speciesListName))
+# spList <- spList[,2]
+# spList <- sort(c(spList[2:length(spList)]))
 
 
-
-## Set simulation and module parameters
+# set simulation and module parameters ####
 simModules <- list("PS", "examinePS")
 simTimes <- list(start = 1, end = 1, timeunit = "year")
 simParams <- list(
@@ -64,37 +81,40 @@ simParams <- list(
     .plotInitialTime = 1,
     .saveInitialTime = 1,
     nTrees = 10, # 5000, #glm number of trees
-    ageGrouping = 10, # age class width
-    maxAgeClass = 17, # number of age classes
+    ageGrouping = 10, # choose age class width
+    maxAgeClass = 17, # choose number of age classes
     only1DPS = FALSE, # choose 1DPS or 2DPS
-    spList = spList, # species to include
-    nameBCR = nameBCR,
-    studyAreaLocation = locationStudyArea,
-    .studyAreaName = .studyAreaName,
-    rasterToMatchLocation = locationRasterToMatch,
-    rasterToMatchName = rasterToMatchName,
-    nameForClassRas = nameForClassRas,
-    locationForClass = locationForClass,
-    nameLandClassRas = nameLandClassRas,
-    locationLandClass = locationLandClass,
-    nameAgeRas = nameAgeRas,
-    locationAge = locationAge,
-    locationSpRas = locationSpRas
+    spList = spList, # species to include in analysis
+    nameBCR = nameBCR, 
+    studyAreaLocation = locationStudyArea, #specify folder containing the study area .shp file 
+    .studyAreaName = .studyAreaName, #specify name of the study area .shp file 
+    rasterToMatchLocation = locationRasterToMatch, #specify folder containing the rasterToMatch  
+    rasterToMatchName = rasterToMatchName, #specify name of the raster to match 
+    nameForClassRas = nameForClassRas, #specify name of the forest class raster 
+    locationForClass = locationForClass,#specify folder containing the forest class raster  
+    nameLandClassRas = nameLandClassRas, #specify name of the land class raster file
+    locationLandClass = locationLandClass, #specify folder containing the land Class Raster 
+    nameAgeRas = nameAgeRas, #specify name of the age raster 
+    locationAge = locationAge,#specify folder containing the age Raster 
+    locationSpRas = locationSpRas #specify folder containing the species density rasters  
   ),
   examinePS = list(
     doPredsInitialTime = 1,
     .plotInitialTime = 1,
     .saveInitialTime = 1,
-    spList = spList, # species to include
+    spList = spList, # species to include in analysis
     only1DPS = FALSE # choose 1DPS or 2DPS
   )
 )
 
 
-## Simulation setup
+# simulation setup ####
 mySim <- simInit(
-  times = simTimes, params = simParams,
-  modules = simModules, paths = simPaths
+  times = simTimes, 
+  params = simParams,
+  modules = simModules, 
+  paths = simPaths
 )
 
+# run simulation ####
 test <- spades(mySim)
