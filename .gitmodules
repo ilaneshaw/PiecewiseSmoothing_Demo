@@ -1,3 +1,15 @@
 [submodule "modules/BRC"]
 	path = modules/BRC
 	url = https://github.com/ilaneshaw/BRC.git
+[submodule "modules/examinePS"]
+	path = modules/examinePS
+	url = https://github.com/ilaneshaw/examinePS.git
+[submodule "modules/PS"]
+	path = modules/PS
+	url = https://github.com/ilaneshaw/PS.git
+[submodule "modules/WBI_vegReclass"]
+	path = modules/WBI_vegReclass
+	url = https://github.com/ilaneshaw/WBI_vegReclass.git
+[submodule "modules/birdRange"]
+	path = modules/birdRange
+	url = https://github.com/ilaneshaw/birdRange.git
