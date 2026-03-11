@@ -1,49 +1,25 @@
-# History files
-.Rhistory
-.Rapp.history
+# ignore everything (dirs, files, sub-dirs, sub-files)
+/*
 
-# Session Data files
-.RData
-.RDataTmp
+# but do not ignore the .gitignore and .gitmodules files
+!.gitignore
+!.gitmodules
 
-# User-specific files
-.Ruserdata
+# do not ignore R projct
+!PiecewiseSmoothing_Demo.Rproj
 
-# Example code in package build process
-*-Ex.R
+# do not ignore the following Rmd and R files
+!plotResults.Rmd
+!runPSandExaminePS.R
 
-# Output files from R CMD build
-/*.tar.gz
+# do not ignore the readme, citation and licence
+!README.md
+!CITATION.cff
+!LICENSE
+!COPYING.txt
 
-# Output files from R CMD check
-/*.Rcheck/
+# do not ignore the following folders
+!/modules
 
-# RStudio files
-.Rproj.user/
 
-# produced vignettes
-vignettes/*.html
-vignettes/*.pdf
 
-# OAuth2 token, see https://github.com/hadley/httr/releases/tag/v0.3
-.httr-oauth
-
-# knitr and R markdown default cache directories
-*_cache/
-/cache/
-
-# Temporary files created by R markdown
-*.utf8.md
-*.knit.md
-
-# R Environment Variables
-.Renviron
-
-# pkgdown site
-docs/
-
-# translation temp files
-po/*~
-
-# RStudio Connect folder
-rsconnect/
