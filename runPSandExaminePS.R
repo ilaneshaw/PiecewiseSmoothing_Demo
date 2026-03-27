@@ -1,11 +1,13 @@
-library("conflicted")
 library("SpaDES.core")
 
 options(spades.useRequire = FALSE)
 
 ## set paths ####
 
-runName <- "17x10YrAgeClasses" # put outputs for each set of age classes/different study area in separate folder
+# put outputs for each set of age classes/different study area in separate folder
+#runName <- "17x10YrAgeClasses"
+runName <- "9x20yrAgeClasses"
+#runName <- "5x40yrAgeClasses"
 
 setPaths(
   modulePath = file.path("./modules"),
@@ -60,6 +62,13 @@ spList <- sort(c(
   "RBNU", "RCKI", "REVI", "SWTH", "TEWA", "YRWA"
 ))
 
+# # Alternative: read spList from csv file (as saved from birdRange module)
+# speciesListName <- "birdList_AB"
+# speciesListLocation <- checkPath(file.path(Paths$inputPath, "speciesList"), create = TRUE)
+# spList <- read.csv(file.path(speciesListLocation, speciesListName))
+# spList <- sort(spList[,2])
+
+
 # set simulation and module parameters ####
 simModules <- list("PS", "examinePS")
 simTimes <- list(start = 1, end = 1, timeunit = "year")
@@ -69,8 +78,8 @@ simParams <- list(
     .plotInitialTime = 1,
     .saveInitialTime = 1,
     nTrees = 10, # 5000, #glm number of trees
-    ageGrouping = 10, # choose age class width
-    maxAgeClass = 17, # choose number of age classes
+    ageGrouping = 20, #10, #20, #40, # choose age class width
+    maxAgeClass = 9, #17, #9, #5, # choose number of age classes
     only1DPS = FALSE, # choose 1DPS or 2DPS
     spList = spList, # species to include in analysis
     nameBCR = nameBCR,
