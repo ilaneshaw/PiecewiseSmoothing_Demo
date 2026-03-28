@@ -5,8 +5,8 @@ options(spades.useRequire = FALSE)
 ## set paths ####
 
 # put outputs for each set of age classes/different study area in separate folder
-#runName <- "17x10YrAgeClasses"
-runName <- "9x20yrAgeClasses"
+runName <- "17x10YrAgeClasses"
+#runName <- "9x20yrAgeClasses"
 #runName <- "5x40yrAgeClasses"
 
 setPaths(
@@ -78,8 +78,8 @@ simParams <- list(
     .plotInitialTime = 1,
     .saveInitialTime = 1,
     nTrees = 10, # 5000, #glm number of trees
-    ageGrouping = 20, #10, #20, #40, # choose age class width
-    maxAgeClass = 9, #17, #9, #5, # choose number of age classes
+    ageGrouping = 10, #20, #40, # choose age class width
+    maxAgeClass = 17, #9, #5, # choose number of age classes
     only1DPS = FALSE, # choose 1DPS or 2DPS
     spList = spList, # species to include in analysis
     nameBCR = nameBCR,
