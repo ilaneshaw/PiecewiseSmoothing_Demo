@@ -1,12 +1,12 @@
 # PiecewiseSmoothing_Demo
 
-runPSAndExaminePS.R will run the two key piecewise smoothing modules (PS and examinePS).
+runPSAndExaminePS.R will run the two key piecewise smoothing modules (PS and examinePS). The script will download all neccesary rasters and shapefiles to reproduce results in the piecewise smoothing manuscript. 
 
-plotResults.Rmd includes code to reproduce all graphs in the Piecewise Smoothing manuscript and the supplementary material.
+plotResults.Rmd includes code to reproduce all graphs in the piecewise smoothing manuscript and the supplementary material.
 
 Also included in the modules folder are 
 1) birdRange, which provides a method to select bird species that meet a given density threshold over a certain amount of the study area. A code chunk in the birdRange.Rmd file provides a usage example.
-2) BRC, which is the module used to produce mean rasters of bootstrapped bird density models. As the bootstrapped models have been updated and are no longer available the code will not run, however it demonstrates the method used and could be redily adapted for other similar use cases.
+2) BRC, which is the module used to produce mean rasters of bootstrapped bird density models. As the bootstrapped models have been updated and are no longer publically available the code will not run, however it demonstrates the method used and could be readily adapted for other similar use cases.
 3) WBI_vegReclass, which is the module code that was used to produce the example landscape rasters. 
 
 It is neccesary to install the SpaDES package to run any of the modules. 
