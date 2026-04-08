@@ -1,0 +1,17 @@
+cff-version: 1.1.0
+message: "If you use this software, please cite it as below."
+type: software
+authors:
+  - given-names: Isolde
+    family-names: Lane-Shaw
+    email: RALAS6@ulaval.ca
+    affiliation: Université Laval
+    orcid: 'https://orcid.org/0000-0002-7241-4216'
+identifiers:
+  - type: doi
+    value: 10.5281/zenodo.19463610
+title:PiecewiseSmoothing_Demo
+repository-code: 'https://github.com/ilaneshaw/PiecewiseSmoothing_Demo'
+license: GPL-3.0-or-later
+version: v1.0.0
+date-released: 2026-04-08
