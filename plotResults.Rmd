@@ -1930,7 +1930,7 @@ assumptionsByClass <- rbind(
 assumptionsByClass$smoothingType <- as.factor(assumptionsByClass$smoothingType)
 
 
-# normality plot
+# unimodality plot
 plotUnimodality <- ggplot(
   data = assumptionsByClass,
   aes(fill = smoothingType, y = propSpsUnimodal, x = smoothingType)
@@ -2075,7 +2075,7 @@ plotSpearmanStats <- ggplot(
 plotSpearmanStats
 
 
-##################################################################
+#################################################################
 
 # resStats
 resStats_10 <- as.data.frame(read_csv(paste(outputFolderSpPreds_10yr, "/resStats.csv", sep = "")))
