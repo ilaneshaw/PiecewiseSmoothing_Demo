@@ -10,7 +10,7 @@ authors:
 identifiers:
   - type: doi
     value: 10.5281/zenodo.19463610
-title:PiecewiseSmoothing_Demo
+title: PiecewiseSmoothing_Demo
 repository-code: 'https://github.com/ilaneshaw/PiecewiseSmoothing_Demo'
 license: GPL-3.0-or-later
 version: v1.0.0
