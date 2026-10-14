@@ -6,8 +6,8 @@ options(spades.useRequire = FALSE)
 
 # put outputs for each set of age classes/different study area in separate folder
 runName <- "17x10YrAgeClasses"
-# runName <- "9x20yrAgeClasses"
-# runName <- "5x40yrAgeClasses"
+#runName <- "9x20yrAgeClasses"
+#runName <- "5x40yrAgeClasses"
 
 setPaths(
   modulePath = file.path("./modules"),
@@ -32,25 +32,27 @@ locationLandscapeRasters <- checkPath(file.path(Paths$inputPath, "landscapeRaste
 zen4R::download_zenodo(doi = "10.5281/zenodo.17410019", path = locationLandscapeRasters)
 unzip(file.path(locationLandscapeRasters, "landscapeRasters.zip"), exdir = locationLandscapeRasters)
 
-nameForClassRas <- "vegTypesRas_AB_BCR6_2011"
+nameForClassRas <- "forRas_AB_BCR6_2020"
 locationForClass <- locationLandscapeRasters
 
-nameLandClassRas <- "landCoverRas_AB_BCR6_2010"
+nameLandClassRas <- "landRas_AB_BCR6_2020"
 locationLandClass <- locationLandscapeRasters
 
-nameAgeRas <- "ageRas_AB_BCR6_2011"
+nameAgeRas <- "ageRas_AB_BCR6_2020"
 locationAge <- locationLandscapeRasters
 
 # species rasters
-locationSpRas <- checkPath(file.path(Paths$inputPath), create = TRUE)
-zen4R::download_zenodo(doi = "10.5281/zenodo.17516504", path = locationSpRas)
-unzip(file.path(locationSpRas, "meanSpRasters.zip"), exdir = locationSpRas)
+# locationSpRas <- checkPath(file.path(Paths$inputPath), create = TRUE)
+# zen4R::download_zenodo(doi = "10.5281/zenodo.17516504", path = locationSpRas)
+# unzip(file.path(locationSpRas, "meanSpRasters.zip"), exdir = locationSpRas)
 locationSpRas <- file.path(Paths$inputPath, "meanSpRasters")
 
 
 # specify rasterToMatch - this can be any raster that covers the whole study area at the desired resolution
-locationRasterToMatch <- locationLandscapeRasters # here I use the landCoverRas
-rasterToMatchName <- nameLandClassRas
+rasterToMatchName <- "rasterToMatch_1000res_v5crs"
+locationRasterToMatch <- file.path(Paths$inputPath, rasterToMatchName)
+# locationRasterToMatch <- locationLandscapeRasters # here I use the landCoverRas
+# rasterToMatchName <- nameLandClassRas
 
 # specify BCR (to be provided as parameter)
 nameBCR <- "60"
@@ -58,7 +60,7 @@ nameBCR <- "60"
 # provide species list (to be provided as parameter) ####
 spList <- sort(c(
   "ALFL", "BBWA", "BCCH", "BOCH", "BRCR", "CMWA", "COYE",
-  "DEJU", "GCKI", "GRAJ", "LEFL", "MOWA", "OVEN", "PAWA",
+  "DEJU", "GCKI", "CAJA", "LEFL", "MOWA", "OVEN", "PAWA",
   "RBNU", "RCKI", "REVI", "SWTH", "TEWA", "YRWA"
 ))
 
@@ -77,9 +79,9 @@ simParams <- list(
     doPredsInitialTime = 1,
     .plotInitialTime = 1,
     .saveInitialTime = 1,
-    nTrees = 10, # 5000, #glm number of trees
-    ageGrouping = 10, # 20, #40, # choose age class width
-    maxAgeClass = 17, # 9, #5, # choose number of age classes
+    nTrees =  10000, #glm number of trees
+    ageGrouping = 10, #10, # 20, #40, # choose age class width
+    maxAgeClass = 17, #17, # 9, #5, # choose number of age classes
     only1DPS = FALSE, # choose 1DPS or 2DPS
     spList = spList, # species to include in analysis
     nameBCR = nameBCR,
@@ -116,3 +118,4 @@ mySim <- simInit(
 
 # run simulation ####
 test <- spades(mySim)
+
