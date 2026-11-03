@@ -10,7 +10,7 @@
 
 # do not ignore the following Rmd and R files
 !plotResults.Rmd
-!runPSandExaminePS.R
+!runPS_Demo.R
 
 # do not ignore the readme, citation and licence
 !README.md
