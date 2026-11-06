@@ -9,8 +9,8 @@ ageGrouping <- 10 #10, # 20, #40, # choose age class width
 maxAgeClass <- 17 #17, # 9, #5, # choose number of age classes
 
 # put outputs for each set of age classes/different study area in separate folder
-province <- "QC" #"AB" #"QC" # "NT"  ## used only for naming, not needed for module functionality
-bcr <-  "8_12" #"6"#"8_12" #"7"  ## used only for naming, not needed for module functionality
+province <- "AB" #"AB" #"QC" # "NT"  ## used only for naming, not needed for module functionality
+bcr <-  "6" #"6"#"8_12" #"7"  ## used only for naming, not needed for module functionality
 runName <- paste(maxAgeClass, "x", ageGrouping, "YrAgeClasses_", province, "_", bcr, sep = "")
 #runName <- "9x20yrAgeClasses"
 #runName <- "5x40yrAgeClasses"
@@ -58,7 +58,7 @@ locationAge <- locationLandscapeRasters
 # zen4R::download_zenodo(doi = "10.5281/zenodo.17516504", path = locationSpRas)
 # unzip(file.path(locationSpRas, "meanSpRasters.zip"), exdir = locationSpRas)
 locationSpRas <- locationSpRas <- file.path(Paths$inputPath, "spRasters", "meanSpRasters")
-locationWtRas <- file.path(Paths$inputPath, "spRasters", "wtRasters")
+locationWtRas <- file.path(Paths$inputPath, "spRasters", "wtRas_A")
 #namePattern <- ".tif"
 spNameSubstr <- c(1,4) 
 excludeList <- c("EUST", "HOSP", "ROPI") # specify any species to exclude. Here, we exclude non-native species
@@ -99,14 +99,15 @@ simParams <- list(
     rasterToMatchName = rasterToMatchName,
     studyAreaLocation = locationStudyArea,
     excludeList = excludeList,
-    areaThreshold = 0.25,
+    areaThreshold = 0.5,
     probOfOccurrenceThreshold = 0.05
   ),
   PS = list(
     doPredsInitialTime = 1,
     .plotInitialTime = 1,
     .saveInitialTime = 1,
-    nTrees =  150000, #glm number of trees
+    parallelOption = FALSE, #TRUE 
+    nTrees =  1000, #glm number of trees
     ageGrouping = ageGrouping, # choose age class width
     maxAgeClass = maxAgeClass, # choose number of age classes
     only1DPS = FALSE, # choose 1DPS or 2DPS
