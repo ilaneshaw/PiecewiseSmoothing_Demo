@@ -11,7 +11,6 @@ output: html_document
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 library(conflicted)
-#library(Require)
 library(sna)
 library(terra)
 library(SpaDES)
@@ -52,106 +51,115 @@ setPaths(
 simPaths <- getPaths()
 
 ## Get species info ####
-
-#spList
-spList <- sort(c(
-  "ALFL", "BBWA", "BCCH", "BOCH", "BRCR", "CMWA", "COYE",
-  "DEJU", "GCKI", "CAJA", "LEFL", "MOWA", "OVEN", "PAWA",
-  "RBNU", "RCKI", "REVI", "SWTH", "TEWA", "YRWA"
-))
+spNames <- as.data.table(read.csv(file.path(Paths$inputPath, "species_names.csv")))
 
 # facet labels sp.labs 
-sp.labs <- c(
-  "Alder \nFlycatcher", "Bay-breasted\n Warbler", "Black-capped\n Chickadee",
-  "Boreal \nChickadee", "Brown \nCreeper", "Canada\n Jay", "Cape May\n Warbler",
-  "Common \nYellowthroat", "Dark-eyed\n Junco", "Golden-crowned\n Kinglet",
-   "Least \nFlycatcher", "Mourning\n Warbler",
-  "Ovenbird", "Palm \nWarbler", "Red-breasted\n Nuthatch",
-  "Ruby-crowned\n Kinglet", "Red-eyed\n Vireo", "Swainson’s\n Thrush",
-  "Tennessee\n Warbler", "Yellow-rumped\n Warbler"
-)
-names(sp.labs) <- c(
-  "ALFL", "BBWA", "BCCH",
-  "BOCH", "BRCR", "CAJA",
-  "CMWA", "COYE", "DEJU",
-  "GCKI", "LEFL", "MOWA",
-  "OVEN", "PAWA", "RBNU",
-  "RCKI", "REVI", "SWTH",
-  "TEWA", "YRWA"
-)
+sp.labs <- spNames$spNameEnglish
+names(sp.labs) <- spNames$spCode
 
-# spNames table
-spName <- c(
-  "Alder Flycatcher", "Bay-breasted Warbler", "Black-capped Chickadee",
-  "Boreal Chickadee", "Brown Creeper", "Cape May Warbler",
-  "Common Yellowthroat", "Dark-eyed Junco", "Golden-crowned Kinglet",
-  "Canada Jay", "Least Flycatcher", "Mourning Warbler",
-  "Ovenbird", "Palm Warbler", "Red-breasted Nuthatch",
-  "Ruby-crowned Kinglet", "Red-eyed Vireo", "Swainson’s Thrush",
-  "Tennessee Warbler", "Yellow-rumped Warbler"
-)
-spCode <- c(
-  "ALFL", "BBWA", "BCCH",
-  "BOCH", "BRCR", "CMWA",
-  "COYE", "DEJU", "GCKI",
-  "CAJA", "LEFL", "MOWA",
-  "OVEN", "PAWA", "RBNU",
-  "RCKI", "REVI", "SWTH",
-  "TEWA", "YRWA"
-)
-spNames <- as.data.frame(spName, spCode)
+# #spList
+spList <- sort(unique(spNames$spCode))
+# spList <- sort(c(
+#   "ALFL", "BBWA", "BCCH", "BOCH", "BRCR", "CMWA", "COYE",
+#   "DEJU", "GCKI", "CAJA", "LEFL", "MOWA", "OVEN", "PAWA",
+#   "RBNU", "RCKI", "REVI", "SWTH", "TEWA", "YRWA"
+# ))
 
-# Specify input locations ####
 
-# studyArea
-.studyAreaName <- "studyArea_AB_BCR6.shp"
-locationStudyArea <- file.path(Paths$inputPath, "studyArea", tools::file_path_sans_ext(.studyAreaName), .studyAreaName)
+#get list of runNames
+runNames <- c("17x10YrAgeClasses", 
+              "9x20yrAgeClasses", 
+              "5x40yrAgeClasses")
+
+#get studyAreaList
+studyAreaList <- c("AB_BCR6",
+                    "NT_BCR7",
+                    "QC_BCR8_12")
+
+# facet labels studyArea.labs 
+studyArea.labs <- c("Alberta, BCR 6", "Northwest Territories, BCR 7", "Quebec, BCR 8/12")
+names(studyArea.labs) <- studyAreaList
+
+#root locations
+locationLandscapeRasters <- file.path(Paths$inputPath, "landscapeRasters")
+locationFigs <- file.path(Paths$outputPath, "PSFigs")
+
+
+#make table of locations for each location and run
+locationsTab <- lapply(studyAreaList, FUN = function(studyArea) {
+ 
+
+#get province and bcr
+province <- substr(studyArea, 1, 2)
+bcr <- substr(studyArea, 7, nchar(studyArea))
+  
+.studyAreaName <- paste("studyArea_", studyArea, ".shp", sep = "")
+locationStudyArea <- file.path(Paths$inputPath,
+                               "studyArea",
+                               tools::file_path_sans_ext(.studyAreaName),
+                               .studyAreaName)
 
 # landscapeRasters
-locationLandscapeRasters <- file.path(Paths$inputPath, "landscapeRasters")
-
-nameForClassRas <- "forRas_AB_BCR6_2020"
+nameForClassRas <- paste("forRas_", studyArea, "_2020", sep = "")
 locationForClass <- file.path(locationLandscapeRasters, nameForClassRas)
-
-nameLandClassRas <- "landRas_AB_BCR6_2020"
+nameLandClassRas <- paste("landRas_", studyArea, "_2020", sep = "")
 locationLandClass <- file.path(locationLandscapeRasters, nameLandClassRas)
-
-nameAgeRas <- "ageRas_AB_BCR6_2020"
+nameAgeRas <- paste("ageRas_", studyArea, "_2020", sep = "")
 locationAge <- file.path(locationLandscapeRasters, nameAgeRas)
 
+runInfo <- lapply(runNames, FUN = function(runName) {
+
+  runName <- runName
+  
+  outputFolderSpPreds <- checkPath(file.path(Paths$outputPath, tools::file_path_sans_ext(.studyAreaName), runName, "PSPreds"), create = TRUE)
+  outputFolderSpPredsRasters <- checkPath(file.path(Paths$outputPath, tools::file_path_sans_ext(.studyAreaName), runName, "PSRas"), create = TRUE)
+  saveLocation_Figs <- checkPath(file.path(locationFigs, tools::file_path_sans_ext(.studyAreaName), runName), create = TRUE)
+
+runInfo <-data.frame(runName, outputFolderSpPreds,
+                 outputFolderSpPredsRasters, saveLocation_Figs)
+
+  return(runInfo)
+  })
+
+runInfo <- rbindlist(runInfo)
+
+saveLocation_studyAreaFigs <- checkPath(file.path(locationFigs, tools::file_path_sans_ext(.studyAreaName)), create = TRUE)
+
+#make into tab
+locations <- cbind(studyArea, province, bcr, 
+                   .studyAreaName, locationStudyArea, 
+                   nameForClassRas, locationForClass,
+                   nameLandClassRas, locationLandClass, 
+                   nameAgeRas, locationAge, 
+                   saveLocation_studyAreaFigs, runInfo)
+
+  return(locations)
+})
+
+locationsTab <- as.data.table(rbindlist(locationsTab))
+
 # rasterToMatch
-# rasterToMatchName <- nameLandClassRas
-# rasterToMatchLocation <- file.path(locationLandscapeRasters, rasterToMatchName)
 rasterToMatchName <- "rasterToMatch_1000res_v5crs"
 rasterToMatchLocation <- file.path(Paths$inputPath, rasterToMatchName, rasterToMatchName)
 
 # Species rasters
-locationSpRas <- file.path(Paths$inputPath, "meanSpRasters")
+locationSpRas <- file.path(Paths$inputPath, "spRasters", "meanSpRasters")
 
 
 # Specify colour schemes
-
-#dev.new()
-
 coloursAge <- "#A5A587FF"
 
-agePal <- colorRampPalette(c("#D2D2C3FF", "#A5A587FF", "#78963CFF", "#1E4B3CFF", "black"))
+agePal <- c("#D2D2C3FF", "#A5A587FF", "#78963CFF", "#1E4B3CFF", "black")
 classPalLc <- c(
-  "#3C6987FF",  "#4B3C4BFF", "#2D3C5AFF",
-  "#D2D2C3FF", "#A5A587FF"
+  "#3C6987FF",  "#D2D2C3FF", "#A5A587FF", "#2D3C5AFF",  "#4B3C4BFF"
 )
-# classPalLc <- c(
-#   "#3C6987FF", "#87A5A5FF", "#4B3C4BFF", "#2D3C5AFF",
-#   "#D2D2C3FF", "#A5A587FF"
-# )
+
 classPalFc <- c(
-  "#B4783CFF", "#D2A54BFF",
-  "#B4B45AFF", "#78963CFF", "#1E4B3CFF", "#5A695AFF"
+ "#B4783CFF", "#D2A54BFF",  "#B4B45AFF", "#78963CFF",  "#5A695AFF", "#87A5A5FF", "black"
 )
 classPal <- c(
-  "#3C6987FF", "#87A5A5FF", "#4B3C4BFF", "#2D3C5AFF",
-  "#D2D2C3FF", "#A5A587FF", "#B4783CFF", "#D2A54BFF",
-  "#B4B45AFF", "#78963CFF", "#1E4B3CFF", "#5A695AFF"
+  "#3C6987FF", "white", "#D2D2C3FF", "#A5A587FF","#4B3C4BFF", "#2D3C5AFF",
+   "#B4783CFF", "#D2A54BFF",  "#B4B45AFF", "#78963CFF",  "#5A695AFF", "#87A5A5FF", "black"
 )
 coloursAllSame <- c(
   "#A5A587FF", "#A5A587FF", "#A5A587FF",
@@ -161,64 +169,11 @@ coloursAllSame <- c(
 colours2D <- classPal[10]
 colours2D_alt <- classPal[12]
 
+colStudyAreas <- c("#A5A587FF", "#78963CFF", "#1E4B3CFF")
 
-# coloursScale <- scale_colour_paletteer_d("impressionist.colors::la_recolte_des_foins_eragny")
-# scale_color_paletteer_d("impressionist.colors::la_recolte_des_foins_eragny")
-# scale_fill_paletteer_d("impressionist.colors::la_recolte_des_foins_eragny")
-# classPal <- paletteer_d("impressionist.colors::la_recolte_des_foins_eragny")
-#
+colRuns <- c("#4B3C4BFF", "#A5A587FF", "#78963CFF", "#1E4B3CFF")
 
-#
-# coloursLand <- classPal[1:6]
-# coloursFor <- classPal[7:12]
-
-# colours1D2D <- classPal[c(1, 10)]
-
-
-
-# coloursAllSame2 <- c(
-#   "#78963CFF", "#78963CFF", "#78963CFF",
-#   "#78963CFF", "#78963CFF", "#78963CFF"
-# )
 ```
-
-## Specify locations of PS outputs
-
-### Outputs for a single run 
-
-```{r outputLocation_singleRun}
-runName <- "17x10YrAgeClasses"
-# runName <- "9x20yrAgeClasses"
-# runName <- "5x40yrAgeClasses"
-outputFolderSpPreds <- checkPath(file.path(Paths$outputPath, runName, "PSPreds"))
-outputFolderSpPredsRasters <- checkPath(file.path(Paths$outputPath, runName, "PSRas"))
-saveLocation <- checkPath(file.path(Paths$outputPath, "PSFigs", runName), create = TRUE)
-
-saveLocation_1D <- checkPath(file.path(Paths$outputPath, "PSFigs"), create = TRUE)
-```
-
-
-### Outputs for all runs
-
-```{r outputLocation_allRuns}
-saveLocation_1D <- checkPath(file.path(Paths$outputPath, "PSFigs"), create = TRUE)
-
-runName <- "17x10YrAgeClasses"
-outputFolderSpPreds_10yr <- checkPath(file.path(Paths$outputPath, runName, "PSPreds"))
-outputFolderSpPredsRasters_10yr <- checkPath(file.path(Paths$outputPath, runName, "PSRas"))
-saveLocation_10yr <- checkPath(file.path(Paths$outputPath, "PSFigs", runName), create = TRUE)
-
-runName <- "9x20yrAgeClasses"
-outputFolderSpPreds_20yr <- checkPath(file.path(Paths$outputPath, runName, "PSPreds"))
-outputFolderSpPredsRasters_20yr <- checkPath(file.path(Paths$outputPath, runName, "PSRas"))
-saveLocation_20yr <- checkPath(file.path(Paths$outputPath, "PSFigs", runName), create = TRUE)
-
-runName <- "5x40yrAgeClasses"
-outputFolderSpPreds_40yr <- checkPath(file.path(Paths$outputPath, runName, "PSPreds"))
-outputFolderSpPredsRasters_40yr <- checkPath(file.path(Paths$outputPath, runName, "PSRas"))
-saveLocation_40yr <- checkPath(file.path(Paths$outputPath, "PSFigs", runName), create = TRUE)
-```
-
 
 
 ## Input landscape rasters
@@ -230,9 +185,15 @@ saveLocation_40yr <- checkPath(file.path(Paths$outputPath, "PSFigs", runName), c
 print("get rasterTomatch from local drive")
 rasterToMatch <- terra::rast(rasterToMatchLocation)
 
+landscapeRasters <- lapply(studyAreaList, FUN = function(sa) { 
+
+locationsTabSA <- locationsTab[studyArea == sa]
+
 # get StudyArea shapefile
 print("get studyArea shapefile from local drive")
-studyArea <- terra::vect(locationStudyArea)
+studyArea <- terra::vect(unique(locationsTabSA$locationStudyArea))
+#names(studyArea) <- sa
+#names(studyArea) <- "studyArea"
 
 # postProcess studyArea
 studyArea <- reproducible::postProcessTo(
@@ -244,6 +205,7 @@ studyArea <- reproducible::postProcessTo(
 
 # crop and mask rasterToMatch
 rasterToMatch <- terra::mask(terra::crop(rasterToMatch, studyArea), studyArea)
+#names(rasterToMatch) <- paste("rasterToMatch_", sa, sep = "")
 names(rasterToMatch) <- "rasterToMatch"
 
 # find out area
@@ -252,7 +214,7 @@ print(paste("The study area size is ", ha_expanseStudyArea, " ha", sep = ""))
 
 # get forest class raster
 print("get forClassRas from Drive")
-forClassRas <- terra::rast(locationForClass)
+forClassRas <- terra::rast(unique(locationsTabSA$locationForClass))
 forClassRas <- reproducible::postProcessTo(
       from = forClassRas,
       to = rasterToMatch,
@@ -262,14 +224,15 @@ forClassRas <- reproducible::postProcessTo(
       verbose = TRUE
     )
 
-names(forClassRas) <- c("forClassRas")
+#names(forClassRas) <- paste("forClassRas_", sa, sep = "")
+names(forClassRas) <- "forClassRas"
 
 forClassRas[forClassRas == 0] <- NA
 
 
 # get non forest raster
 print("get landClassRas")
-landClassRas <- terra::rast(locationLandClass)
+landClassRas <- terra::rast(unique(locationsTabSA$locationLandClass))
 landClassRas <- reproducible::postProcessTo(
       from = landClassRas,
       to = rasterToMatch,
@@ -278,11 +241,12 @@ landClassRas <- reproducible::postProcessTo(
       overwrite = FALSE,
       verbose = TRUE
     )
-
+#names(landClassRas) <- paste("landClassRas_", sa, sep = "")
+names(landClassRas) <- "landClassRas"
 
 # get age raster
 print("get ageRas from Drive")
-ageRas <- terra::rast(locationAge)
+ageRas <- terra::rast(unique(locationsTabSA$locationAge))
 ageRas <- reproducible::postProcessTo(
       from = ageRas,
       to = rasterToMatch,
@@ -292,430 +256,21 @@ ageRas <- reproducible::postProcessTo(
       verbose = TRUE
     )
 
-names(ageRas) <- c("ageRas")
-```
+#names(ageRas) <- paste("ageRas_", sa, sep = "")
+names(ageRas) <- "ageRas"
 
+landscapeRas <- c(rasterToMatch, forClassRas, landClassRas, ageRas)
 
-# LANDSCAPE PLOTS AND MAPS
+return(landscapeRas)
+})
 
-## Summary landscape plots
+names(landscapeRasters) <- studyAreaList
 
-```{r singlelandscapeSummaryPlots, echo=FALSE}
-# Get raster values and input to cellValues
-allLandData <- data.table(terra::values(c(
-  forClassRas,
-  landClassRas,
-  ageRas,
-  rasterToMatch
-)))
-allLandData <- setnames(allLandData, c(
-  "forClass",
-  "landClass",
-  "age",
-  "rasterToMatch"
-))
 
-allLandData <- allLandData[, FoLRaster := ifelse(!is.na(landClass) & !is.na(forClass), "forClass",
-  ifelse(!is.na(landClass), "landClass",
-    ifelse(!is.na(forClass), "forClass", NA)
-  )
-)]
-
-# get rid of cells with no forest or land class data.
-allLandData <- allLandData[!is.na(FoLRaster)]
-
-# make column giving the land or forest class for each row.
-allLandData <- allLandData[, landForClass := coalesce(forClass, landClass)]
-
-# in case there are classes named the same in both rasters, combine the landForClass and FoLRaster data to make sure each class is unique
-allLandData <- unite(allLandData,
-  landForClass,
-  c(
-    FoLRaster,
-    landForClass
-  ),
-  remove = FALSE
-)
-
-allLandData$foLRaster <- as.factor(allLandData$FoLRaster)
-allLandData$landForClass <- as.factor(allLandData$landForClass)
-allLandData$rasterToMatch <- as.factor(allLandData$rasterToMatch)
-
-# get rid of any rows with NA values
-allLandData <- subset(allLandData, !is.na(landForClass))
-allLandData <- as.data.table(allLandData)
-
-# check that there are no unwanted overlaps for nonForest raster
-nonForDat <- na.omit(allLandData, cols = "landClass")
-unique(nonForDat$forClass)
-sort(unique(nonForDat$landForClass))
-sort(unique(nonForDat$age))
-sort(unique(nonForDat$FoLRaster))
-sort(unique(nonForDat$rasterToMatch))
-
-# check that there are no unwanted overlaps for nonForest raster
-forClassDat <- na.omit(allLandData, cols = "forClass")
-unique(forClassDat$landClass)
-sort(unique(forClassDat$landForClass))
-sort(unique(forClassDat$age))
-unique(forClassDat$FoLRaster)
-sort(unique(forClassDat$rasterToMatch))
-
-landDatStats <- allLandData[
-  base::order(
-    FoLRaster,
-    landForClass
-  )
-][, list(classCount = .N),
-  by = list(
-    FoLRaster,
-    landForClass
-  )
-]
-
-landDatStats[, propArea := classCount / sum(classCount)]
-
-
-# Class count bar plot ####
-
-#specify class level order
-landDatStats$landForClass <- factor(landDatStats$landForClass,
-  levels = c(
-    "landClass_1",
-    "landClass_2",
-    "landClass_3",
-    "landClass_4",
-    "landClass_5",
-    "forClass_6",
-    "forClass_7",
-    "forClass_8",
-    "forClass_9",
-    "forClass_10",
-    "forClass_11"
-  )
-)
-
-
-plotClassCounts <- ggplot(
-  data = landDatStats,
-  aes(
-    x = landForClass,
-    y = propArea,
-  )
-) +
-  geom_bar(
-    stat = "identity",
-    position = "dodge",
-    width = 0.7,
-    fill = coloursAge
-  ) +
-  theme_minimal() +
-  labs(tag = "(a)") +
-  # ggtitle(paste0("Proportional area by cover class")) +
-  ylab("Proportion of study area") +
-  scale_y_continuous(breaks = pretty_breaks()) +
-  scale_x_discrete(labels = c(
-    #"landClass_0" = "Unmanaged\n Forest",
-    "landClass_1" = "Water",
-    "landClass_2" = "Rock",
-    "landClass_3" = "Bryoid",
-    "landClass_4" = "Herbs",
-    "landClass_5" = "Shrub",
-    "forClass_6" = "Broadleaf",
-     "forClass_7" = "Mixed",
-    "forClass_8" = "Pine",
-    "forClass_9" = "Other Coniferous/White spruce",
-    "forClass_10" = "Black \nSpruce",
-    "forClass_11" = "  Black  \nSpruce Wet"
-  )) +
-  theme(
-    title = element_text(size = 14),
-    axis.text.y = element_text(size = 10),
-    axis.text.x = element_text(size = 10, angle = 45, hjust = 1),
-    axis.title.y = element_text(size = 12),
-    axis.title.x = element_blank(),
-    legend.title = element_blank(),
-    legend.text = element_blank(),
-    plot.margin = margin(0, 0.5, 0, 0.1, "cm"),
-    legend.position = "NULL"
-  )
-plotClassCounts
-
-
-# Age Plot ####
-
-forClassDat_age <- subset(forClassDat, !is.na(age))
-
-# assign age class column
-ageGrouping <- 10
-maxAgeClass <- 17
-maxAge <- max(forClassDat_age$age) # get age of oldest cell
-maxAgeClassAge <- maxAgeClass * ageGrouping
-
-ifelse(maxAge > maxAgeClassAge, age <- c(0:maxAge), age <- c(0:maxAgeClassAge)) # make a vector that counts from 0 to
-maxAge <- as.numeric(maxAge)
-noAgeClasses <- maxAge / ageGrouping
-ageClass <- ifelse(noAgeClasses < maxAgeClass, ageClass <- maxAgeClass, ageClass <- noAgeClasses)
-ageClass <- rep(1:ageClass, each = ageGrouping)
-ageClass <- c(1, ageClass)
-if (noAgeClasses > maxAgeClass) {
-  ageClassDiff <- noAgeClasses - maxAgeClass
-  extraClass <- maxAgeClass + (1:ageClassDiff)
-  for (x in extraClass) {
-    print(x)
-    ageClass <- replace(ageClass, ageClass == x, maxAgeClass)
-  }
-}
-
-# create a lookup table of age to age class
-ageRefTab <- cbind(age, ageClass)
-ageRefTab <- as.data.table(ageRefTab)
-ageRefTab$age <- as.integer(ageRefTab$age)
-ageRefTab$ageClass <- as.integer(ageRefTab$ageClass)
-ageRefTab
-
-
-forClassDat_age$age <- as.integer(forClassDat_age$age)
-# storeDat <- allLandData
-forClassDat_age %>% pivot_longer(cols = "age")
-forClassDat_age <- forClassDat_age %>% left_join(ageRefTab, by = "age")
-# allLandData %>% pivot_wider(key = ageRas, value = ageClass)
-head(forClassDat_age)
-
-forClassStats_age <- forClassDat_age[
-  base::order(ageClass)
-  # order the rows by the land cover class
-][, list(classCount = .N),
-  by = ageClass
-]
-
-forClassStats_age[, propArea := classCount / sum(classCount)]
-forClassStats_age
-
-ageDistribution <- ggplot(
-  data = forClassStats_age,
-  aes(
-    x = ageClass,
-    y = propArea
-  )
-) +
-  geom_bar(
-    stat = "identity",
-    position = "dodge",
-    fill = coloursAge,
-    width = 0.7
-  ) +
-  labs(tag = "(b)") +
-  # ggtitle(paste0("Forest age class structure")) +
-  xlab("Age (years)") +
-  ylab("Proportion of forested area") +
-  theme_minimal() +
-  scale_x_discrete(
-    labels = c(
-      "1" = "0-10", "2" = "", "3" = "21-30", "4" = "",
-      "5" = "41-50", "6" = "", "7" = "61-70", "8" = "",
-      "9" = "81-90", "10" = "", "11" = "101-110", "12" = "",
-      "13" = "121-130", "14" = "", "15" = "141-150", "16" = "",
-      "17" = "161+"
-    ),
-    limits = c(
-      "1", "2", "3", "4", "5", "6", "7", "8", "9", "10",
-      "11", "12", "13", "14", "15", "16", "17"
-    )
-  ) +
-  scale_y_continuous(breaks = pretty_breaks()) +
-  theme(
-    title = element_text(size = 14),
-    strip.text.x = element_text(size = 12),
-    strip.text.y = element_text(size = 12),
-    strip.background = element_rect(
-      color = "white", fill = "white", linewidth = 1.5
-    ),
-    axis.text.y = element_text(size = 10),
-    axis.text.x = element_text(size = 10, angle = 45, hjust = 1),
-    axis.title.y = element_text(size = 12),
-    axis.title.x = element_text(size = 12),
-    legend.title = element_blank(),
-    legend.text = element_blank(),
-    plot.margin = margin(0, 0, 0.5, 0.3, "cm"),
-    legend.position = "NULL"
-  )
-
-ageDistribution
-
-
-# Bar plot of mean age per landForClass ####
-
-
-ageStats <- forClassDat[
-  base::order(landForClass)
-][, list(
-  classCount = .N,
-  meanAge = mean(age, na.rm = TRUE)
-),
-by = landForClass
-]
-
-# specify class level order
-ageStats$landForClass <- factor(ageStats$landForClass,
-  levels = c(
-    "landClass_1",
-    "landClass_2",
-    "landClass_3",
-    "landClass_4",
-     "landClass_5",
-    "forClass_6",
-    "forClass_7",
-    "forClass_8",
-    "forClass_9",
-    "forClass_10",
-    "forClass_11"
-  )
-)
-
-
-plotMeanAgeByClass <- ggplot(
-  data = ageStats,
-  aes(
-    x = landForClass,
-    y = meanAge
-  )
-) +
-  geom_bar(
-    stat = "identity",
-    position = "dodge",
-    width = 0.7,
-    fill = coloursAge
-  ) +
-  theme_minimal() +
-  # ggtitle(paste0("Mean age by forest class")) +
-  labs(tag = "(c)") +
-  xlab("Forest class") +
-  ylab("Mean Age (years)") +
-  scale_x_discrete(labels = c(
- "forClass_6" = "Broadleaf",
-     "forClass_7" = "Mixed",
-    "forClass_8" = "Pine",
-    "forClass_9" = "Other Coniferous\n/White spruce",
-    "forClass_10" = "Black \nSpruce",
-    "forClass_11" = "  Black  \nSpruce Wet"
-  )) +
-  theme(
-    title = element_text(size = 14),
-    strip.text.x = element_text(size = 12),
-    strip.text.y = element_text(size = 12),
-    strip.background = element_rect(
-      color = "white", fill = "white", linewidth = 1.5
-    ),
-    axis.text.y = element_text(size = 10),
-    axis.text.x = element_text(size = 10, angle = 45, hjust = 1),
-    axis.title.y = element_text(size = 12),
-    axis.title.x = element_blank(),
-    legend.title = element_blank(),
-    legend.text = element_text(size = 10),
-    plot.margin = margin(0, 0.5, 0, 0, "cm"),
-    legend.position = "none"
-  )
-plotMeanAgeByClass
-
-
-# Make single landscape plot figure ####
-
-lay <- rbind(c(1, 1), c(2, 3))
-landscapeSummary <- gridExtra::grid.arrange(plotClassCounts,
-  ageDistribution,
-  plotMeanAgeByClass,
-  layout_matrix = lay
-)
-
-ggsave(file.path(saveLocation_1D, "landscapeSummary.jpeg"), landscapeSummary, width = 16, height = 20, units = "cm")
-```
-
-
-## landscape rasters maps
-
-
-```{r singleStudyAreaLandscapeRasterMaps, echo=FALSE}
-
-op <- par(cex = 2) # change legend text size
-
-# forClassRas
-
-# # reorder classes
-# is <- c(1, 2, 3, 4, 5, 6)
-# becomes <- c(11, 12, 7, 8, 9, 10)
-# reclassMatrixFcr <- matrix(c(is, becomes),
-#   ncol = 2,
-#   byrow = FALSE
-# )
-# print(reclassMatrixFcr)
-# forClassRas <- terra::classify(forClassRas, reclassMatrixFcr)
-
-# reclassify to Class Names
-fcrValue <- c(6, 7, 8, 9, 10, 11)
-fcrLabel <- c("6", "7", "8", "9", "10", "11")
-fcrLabelReclass <- c("Deciduous", "Mixed", "Pine", "Other Coniferous/White Spruce", "Black Spruce", "Black Spruce Wet")
-fcrReclassified <- data.frame(fcrValue, fcrLabel, fcrLabelReclass)
-fcrReclassified$fcrLabelReclass <- as.factor(fcrReclassified$fcrLabelReclass)
-print(fcrReclassified)
-str(fcrReclassified)
-
-forClassRas <- categories(forClassRas, value = fcrReclassified, active = 2)
-
-studyArea <- terra::project(studyArea, y = "+proj=longlat +datum=WGS84")
-forClassRas <- terra::project(forClassRas, y = "+proj=longlat +datum=WGS84")
-forClassRas <- crop(forClassRas, studyArea)
-
-dev.new()
-plot(forClassRas, legend = TRUE, col = classPalFc, colNA = "white", axes = FALSE, box = FALSE)
-
-
-
-# landClassRas
-
-# # reorder classes
-# is <- c(0, 1, 2, 3, 4, 5, 6)
-# becomes <- c(13, 7, 8, 9, 10, 11, 12)
-# reclassMatrixLcr <- matrix(c(is, becomes),
-#   ncol = 2,
-#   byrow = FALSE
-# )
-# print(reclassMatrixLcr)
-# landClassRas <- terra::classify(landClassRas, reclassMatrixLcr)
-
-# reclassify to Class Names
-lcrValue <- c(1, 2, 3, 4, 5)
-lcrLabel <- c("1", "2", "3", "4", "5")
-lcrLabelReclass <- c("Water", "Rock", "Bryoid", "Herb", "Shrub")
-lcrReclassified <- data.frame(lcrValue, lcrLabel, lcrLabelReclass)
-lcrReclassified$lcrLabelReclass <- as.factor(lcrReclassified$lcrLabelReclass)
-print(lcrReclassified)
-str(lcrReclassified)
-
-landClassRas <- categories(landClassRas, value = lcrReclassified, active = 2)
-
-landClassRas <- terra::project(landClassRas, y = "+proj=longlat +datum=WGS84")
-landClassRas <- crop(landClassRas, studyArea)
-
-names(landClassRas) <- c("landClassRas")
-landClassRas <- terra::mask(landClassRas, forClassRas, inverse = TRUE)
-
-dev.new()
-plot(landClassRas, legend = TRUE, col = classPalLc, colNA = "white", axes = FALSE, box = FALSE)
-
-
-
-# ageRas
-
-ageRas <- terra::project(ageRas, y = "+proj=longlat +datum=WGS84")
-ageRas <- crop(ageRas, studyArea)
-
-dev.new()
-plot(ageRas, colNA = "white", axes = FALSE, box = FALSE, col = agePal(75))
-
+landscapeRasters$NT_BCR7$forClassRas <- classify(landscapeRasters$NT_BCR7$forClassRas, cbind(7, 14))
+plot(landscapeRasters$NT_BCR7$forClassRas)
 
 ```
-
 
 #MAKE TABLES WITH SP AND CLASS INFO
 
@@ -803,30 +358,703 @@ gtsave(classInfoTab, "classInfoTab.png", path = saveLocation_1D, expand = 2000)
 ```
 
 
+
+# LANDSCAPE PLOTS AND MAPS
+
+## Summary landscape plots
+
+```{r singlelandscapeSummaryPlots, echo=FALSE}
+
+allLandData <- lapply(studyAreaList, FUN = function(sa) {
+
+ landscapeRasters_sa <- eval(parse(text = paste("landscapeRasters$", sa, sep = "")))
+
+ # Get raster values and input to cellValues
+allLandData <- data.table(terra::values(c(
+  landscapeRasters_sa$forClassRas,
+  landscapeRasters_sa$landClassRas,
+  landscapeRasters_sa$ageRas#,
+  #landscapeRasters_sa$rasterToMatch
+)))
+allLandData <- setnames(allLandData, c(
+  "forClass",
+  "landClass",
+  "age"#,
+  #"rasterToMatch"
+))
+
+allLandData <- allLandData[, FoLRaster := ifelse(!is.na(landClass) & !is.na(forClass), "forClass",
+  ifelse(!is.na(landClass), "landClass",
+    ifelse(!is.na(forClass), "forClass", NA)
+  )
+)]
+
+# get rid of cells with no forest or land class data.
+allLandData <- allLandData[!is.na(FoLRaster)]
+
+# make column giving the land or forest class for each row.
+allLandData <- allLandData[, landForClass := coalesce(forClass, landClass)]
+
+# in case there are classes named the same in both rasters, combine the landForClass and FoLRaster data to make sure each class is unique
+allLandData <- unite(allLandData,
+  landForClass,
+  c(
+    FoLRaster,
+    landForClass
+  ),
+  remove = FALSE
+)
+
+allLandData$foLRaster <- as.factor(allLandData$FoLRaster)
+allLandData$landForClass <- as.factor(allLandData$landForClass)
+#allLandData$rasterToMatch <- as.factor(allLandData$rasterToMatch)
+
+# get rid of any rows with NA values
+allLandData <- subset(allLandData, !is.na(landForClass))
+allLandData <- as.data.table(allLandData)
+
+# check that there are no unwanted overlaps for nonForest raster
+nonForDat <- na.omit(allLandData, cols = "landClass")
+unique(nonForDat$forClass)
+sort(unique(nonForDat$landForClass))
+sort(unique(nonForDat$age))
+sort(unique(nonForDat$FoLRaster))
+#sort(unique(nonForDat$rasterToMatch))
+
+# check that there are no unwanted overlaps for nonForest raster
+forClassDat <- na.omit(allLandData, cols = "forClass")
+unique(forClassDat$landClass)
+sort(unique(forClassDat$landForClass))
+sort(unique(forClassDat$age))
+unique(forClassDat$FoLRaster)
+sort(unique(forClassDat$rasterToMatch))
+
+#add study area column
+studyArea <- rep(sa, times = nrow(allLandData))
+allLandData <- cbind(studyArea, allLandData)
+
+#set class
+allLandData$studyArea <- as.factor(allLandData$studyArea)
+allLandData$forClass <- as.factor(allLandData$forClass)
+allLandData$landClass <- as.factor(allLandData$landClass)
+
+return(allLandData)
+})
+
+allLandData <- rbindlist(allLandData)
+
+landDatStats <- allLandData[
+  base::order(
+    FoLRaster,
+    landForClass
+  )
+][, list(classCount = .N),
+  by = list(
+    studyArea,
+    FoLRaster,
+    landForClass
+  )
+]
+
+landDatStats[, propArea := classCount / sum(classCount), by = studyArea]
+
+
+
+
+# Class count bar plot ####
+
+#specify class level order
+landDatStats$landForClass <- factor(landDatStats$landForClass,
+  levels = c(
+    "landClass_1",
+    "landClass_2",
+    "landClass_3",
+    "landClass_4",
+    "landClass_5",
+    "forClass_6",
+    "forClass_7",
+    "forClass_14",
+    "forClass_8",
+    "forClass_10",
+    "forClass_11",
+    "forClass_13",
+    "forClass_12",
+    "forClass_9"
+  )
+)
+
+
+plotClassCounts <- ggplot(
+  data = landDatStats,
+  aes(x = landForClass,
+    y = propArea,
+    fill = studyArea)
+  ) +
+  facet_wrap(. ~ studyArea, 
+             strip.position="left",
+             scales="free_x", 
+             ncol = 1,
+             labeller = labeller(studyArea = studyArea.labs)) +
+  geom_bar(
+    stat = "identity",
+    position = "dodge",
+    width = 0.7
+  ) +
+  theme_minimal() +
+  labs(tag = "(a)") +
+  scale_fill_manual(values = colStudyAreas, 
+                    labels = c("AB_BCR6" = "Alberta, BCR 6",
+                               "NT_BCR7" = "Northwest Territories, BCR 7",
+                               "QC_BCR8_12" = "Quebec, BCR 8/12") ) +
+  # ggtitle(paste0("Proportional area by cover class")) +
+  ylab("Proportion of study area") +
+  scale_y_continuous(breaks = pretty_breaks(3)) +
+  scale_x_discrete(labels = c(
+    "landClass_1" = "Water",
+    "landClass_2" = "Rock",
+    "landClass_3" = "Bryoid",
+    "landClass_4" = "Herbs",
+    "landClass_5" = "Shrub",
+    "forClass_6" = "Broadleaf",
+     "forClass_7" = "Mixed",
+    "forClass_8" = "Pine",
+    "forClass_9" = "Other Coniferous\n/White spruce",
+    "forClass_10" = "Black \nSpruce",
+    "forClass_11" = "Black \nSpruce Wet",
+    "forClass_12" = "Conifer Mix",
+    "forClass_13" = "Stunted Coniferous",
+    "forClass_14" = "Broadleaf\n/Mixed"
+    
+  )) +
+  theme(
+    title = element_blank(),
+    strip.text = element_blank(),
+    plot.tag = element_text(size = 18),
+    axis.text.y = element_text(size = 14),
+    axis.text.x = element_text(size = 14, angle = 45, hjust = 1),
+    axis.title.y = element_text(size = 16),
+    axis.title.x = element_blank(),
+    legend.title = element_blank(),
+    legend.text = element_text(size = 16),
+    plot.margin = margin(0, 0.5, 0, 0.1, "cm"),
+    legend.position = "NULL"
+  )
+plotClassCounts
+
+
+# Age Box Plot ####
+forClassDat <- na.omit(allLandData, cols = "forClass")
+forClassDat_age <- subset(forClassDat, !is.na(age))
+
+# specify class level order
+forClassDat_age$landForClass <- factor(forClassDat_age$landForClass,
+  levels = c(
+  "landClass_1",
+    "landClass_2",
+    "landClass_3",
+    "landClass_4",
+    "landClass_5",
+    "forClass_6",
+    "forClass_7",
+    "forClass_14",
+    "forClass_8",
+    "forClass_10",
+    "forClass_11",
+    "forClass_13",
+    "forClass_12",
+    "forClass_9"
+  )
+)
+
+agePlot <- ggplot(
+  data = forClassDat_age,
+  aes(x = landForClass,
+      y = age,
+      fill = studyArea)) + 
+  facet_wrap(. ~ studyArea,
+             strip.position="left",
+             scales="free_x", 
+             ncol = 1,
+             labeller = labeller(studyArea = studyArea.labs)) +
+  geom_boxplot()+
+  labs(tag = "(b)") +
+  #ggtitle(paste0("Forest age class structure")) +
+  ylab("Age (years)") +
+   scale_fill_manual(values = colStudyAreas, 
+                    labels = c("AB_BCR6" = "Alberta, BCR 6",
+                               "NT_BCR7" = "Northwest Territories, BCR 7",
+                               "QC_BCR8_12" = "Quebec, BCR 8/12") ) +
+  theme_minimal()+
+  scale_x_discrete(labels = c(
+ "forClass_6" = "Broadleaf",
+     "forClass_7" = "Mixed",
+    "forClass_8" = "Pine",
+    "forClass_9" = "Other Coniferous\n/White spruce",
+    "forClass_10" = "Black \nSpruce",
+    "forClass_11" = "Black \nSpruce Wet",
+    "forClass_12" = "Conifer Mix",
+    "forClass_13" = "Stunted Coniferous",
+    "forClass_14" = "Broadleaf\n/Mixed"
+  )) +
+  scale_y_continuous(breaks = pretty_breaks(4)) +
+ theme(
+    title = element_blank(),
+    strip.text = element_blank(),
+     plot.tag = element_text(size = 18),
+    axis.text.y = element_text(size = 14),
+    axis.text.x = element_text(size = 14, angle = 45, hjust = 1),
+    axis.title.y = element_text(size = 16),
+    axis.title.x = element_blank(),
+    legend.title = element_blank(),
+    legend.text = element_text(size = 16),
+    plot.margin = margin(0, 0.5, 0, 0.1, "cm"),
+    legend.position = "NULL"
+  )
+
+agePlot
+
+
+
+# # Age Plot ####
+# 
+# # forClassDat <- na.omit(allLandData, cols = "forClass")
+# # forClassDat_age <- subset(forClassDat, !is.na(age))
+# 
+# # assign age class column
+# ageGrouping <- 10
+# maxAgeClass <- 17
+# maxAge <- max(forClassDat_age$age) # get age of oldest cell
+# maxAgeClassAge <- maxAgeClass * ageGrouping
+# 
+# ifelse(maxAge > maxAgeClassAge, age <- c(0:maxAge), age <- c(0:maxAgeClassAge)) # make a vector that counts from 0 to
+# maxAge <- as.numeric(maxAge)
+# noAgeClasses <- maxAge / ageGrouping
+# ageClass <- ifelse(noAgeClasses < maxAgeClass, ageClass <- maxAgeClass, ageClass <- noAgeClasses)
+# ageClass <- rep(1:ageClass, each = ageGrouping)
+# ageClass <- c(1, ageClass)
+# if (noAgeClasses > maxAgeClass) {
+#   ageClassDiff <- noAgeClasses - maxAgeClass
+#   extraClass <- maxAgeClass + (1:ageClassDiff)
+#   for (x in extraClass) {
+#     print(x)
+#     ageClass <- replace(ageClass, ageClass == x, maxAgeClass)
+#   }
+# }
+# 
+# # create a lookup table of age to age class
+# ageRefTab <- cbind(age, ageClass)
+# ageRefTab <- as.data.table(ageRefTab)
+# ageRefTab$age <- as.integer(ageRefTab$age)
+# ageRefTab$ageClass <- as.integer(ageRefTab$ageClass)
+# ageRefTab
+# 
+# 
+# forClassDat_age$age <- as.integer(forClassDat_age$age)
+# # storeDat <- allLandData
+# forClassDat_age %>% pivot_longer(cols = "age")
+# forClassDat_age <- forClassDat_age %>% left_join(ageRefTab, by = "age")
+# # allLandData %>% pivot_wider(key = ageRas, value = ageClass)
+# head(forClassDat_age)
+# 
+# forClassStats_age <- forClassDat_age[
+#   base::order(ageClass)
+#   # order the rows by the land cover class
+# ][, list(classCount = .N),
+#   by = list(studyArea, ageClass)
+# ]
+# 
+# forClassStats_age[, propArea := classCount / sum(classCount), by = studyArea]
+# forClassStats_age
+# 
+# ageDistribution <- ggplot(
+#   data = forClassStats_age,
+#   aes(
+#     x = ageClass,
+#     y = propArea
+#   )
+# ) +
+#   facet_wrap(studyArea ~ .) +
+#   geom_bar(
+#     stat = "identity",
+#     position = "dodge",
+#     fill = coloursAge,
+#     width = 0.7
+#   ) +
+#   labs(tag = "(b)") +
+#   # ggtitle(paste0("Forest age class structure")) +
+#   xlab("Age (years)") +
+#   ylab("Proportion of forested area") +
+#   theme_minimal() +
+#   scale_x_discrete(
+#     labels = c(
+#       "1" = "0-10", "2" = "", "3" = "21-30", "4" = "",
+#       "5" = "41-50", "6" = "", "7" = "61-70", "8" = "",
+#       "9" = "81-90", "10" = "", "11" = "101-110", "12" = "",
+#       "13" = "121-130", "14" = "", "15" = "141-150", "16" = "",
+#       "17" = "161+"
+#     ),
+#     limits = c(
+#       "1", "2", "3", "4", "5", "6", "7", "8", "9", "10",
+#       "11", "12", "13", "14", "15", "16", "17"
+#     )
+#   ) +
+#   scale_y_continuous(breaks = pretty_breaks()) +
+#   theme(
+#     title = element_text(size = 14),
+#     strip.text.x = element_text(size = 12),
+#     strip.text.y = element_text(size = 12),
+#     strip.background = element_rect(
+#       color = "white", fill = "white", linewidth = 1.5
+#     ),
+#     axis.text.y = element_text(size = 10),
+#     axis.text.x = element_text(size = 10, angle = 45, hjust = 1),
+#     axis.title.y = element_text(size = 12),
+#     axis.title.x = element_text(size = 12),
+#     legend.title = element_blank(),
+#     legend.text = element_blank(),
+#     plot.margin = margin(0, 0, 0.5, 0.3, "cm"),
+#     legend.position = "NULL"
+#   )
+# 
+# ageDistribution
+# 
+# 
+# # Bar plot of mean age per landForClass ####
+# 
+# 
+# ageStats <- forClassDat[
+#   base::order(landForClass)
+# ][, list(
+#   classCount = .N,
+#   meanAge = mean(age, na.rm = TRUE)
+# ),
+# by = list(studyArea, landForClass)
+# ]
+# 
+# ageStats <- subset(ageStats, !is.na(meanAge))
+# 
+# # specify class level order
+# ageStats$landForClass <- factor(ageStats$landForClass,
+#   levels = c(
+#     "landClass_1",
+#     "landClass_2",
+#     "landClass_3",
+#     "landClass_4",
+#      "landClass_5",
+#     "forClass_6",
+#     "forClass_7",
+#     "forClass_8",
+#     "forClass_9",
+#     "forClass_10",
+#     "forClass_11",
+#     "forClass_12",
+#     "forClass_13"
+#   )
+# )
+# 
+# 
+# 
+# plotMeanAgeByClass <- ggplot(
+#   data = ageStats,
+#   aes(
+#     x = landForClass,
+#     y = meanAge
+#   )
+# ) +
+#   geom_bar(
+#     stat = "identity",
+#     position = "dodge",
+#     width = 0.7,
+#     fill = coloursAge
+#   ) +
+#   facet_wrap(studyArea ~ ., scales="free_x") +
+#   theme_minimal() +
+#   # ggtitle(paste0("Mean age by forest class")) +
+#   labs(tag = "(c)") +
+#   xlab("Forest class") +
+#   ylab("Mean Age (years)") +
+#   scale_x_discrete(labels = c(
+#  "forClass_6" = "Broadleaf",
+#      "forClass_7" = "Mixed",
+#     "forClass_8" = "Pine",
+#     "forClass_9" = "Other Coniferous\n/White spruce",
+#     "forClass_10" = "Black \nSpruce",
+#     "forClass_11" = "  Black  \nSpruce Wet",
+#     "forClass_12" = "forClass_12",
+#     "forClass_13" = "forClass_13"
+#   )) +
+#   theme(
+#     title = element_text(size = 14),
+#     strip.text.x = element_text(size = 12),
+#     strip.text.y = element_text(size = 12),
+#     strip.background = element_rect(
+#       color = "white", fill = "white", linewidth = 1.5
+#     ),
+#     axis.text.y = element_text(size = 10),
+#     axis.text.x = element_text(size = 10, angle = 45, hjust = 1),
+#     axis.title.y = element_text(size = 12),
+#     axis.title.x = element_blank(),
+#     legend.title = element_blank(),
+#     legend.text = element_text(size = 10),
+#     plot.margin = margin(0, 0.5, 0, 0, "cm"),
+#     legend.position = "none"
+#   )
+# plotMeanAgeByClass
+# 
+# 
+# # Make single landscape plot figure ####
+# 
+# lay <- rbind(c(1, 1), c(2, 3))
+# landscapeSummary <- gridExtra::grid.arrange(plotClassCounts,
+#   ageDistribution,
+#   plotMeanAgeByClass,
+#   layout_matrix = lay
+# )
+
+
+landscapeSummary <- ggpubr::ggarrange(plotClassCounts, agePlot, ncol=2, nrow = 1, widths = c(1.5,1), common.legend = TRUE, legend="bottom")
+landscapeSummary
+
+ggsave(file.path(locationFigs, "landscapeSummary.jpeg"), landscapeSummary, width = 30, height = 25, units = "cm")
+
+
+
+```
+
+
+## landscape rasters maps
+
+
+```{r singleStudyAreaLandscapeRasterMaps, echo=FALSE}
+
+#op <- par(cex = 2) # change legend text size
+
+
+#forClassRas 
+
+# reclassify to Class Names
+fcrValue <- c(6, 7, 8, 9, 10, 11, 12, 13, 14)
+fcrLabel <- c("6", "7", "8", "9", "10", "11", "12", "13", "14")
+fcrLabelReclass <- c("Broadleaf", "Mixed", "Pine", "Other Coniferous\n/White Spruce", "Black Spruce", "Black \nSpruce Wet", "Conifer \nMix", "Stunted \nConiferous", "Broadleaf\n/Mixed")
+fcrReclassified <- data.frame(fcrValue, fcrLabel, fcrLabelReclass)
+fcrReclassified$fcrLabelReclass <- as.factor(fcrReclassified$fcrLabelReclass)
+print(fcrReclassified)
+str(fcrReclassified)
+
+fcClassLevelOrder <- c("Broadleaf",
+                     "Mixed",
+    "Broadleaf\n/Mixed",
+    "Pine",
+    "Black Spruce",
+    "Black \nSpruce Wet",
+   "Stunted \nConiferous",
+    "Conifer \nMix",
+     "Other Coniferous\n/White Spruce")
+
+
+         
+
+classPalFc <- c("Broadleaf"               = "#B4783CFF",
+                "Mixed"                   = "#D2A54BFF",
+                "Broadleaf\n/Mixed" = "#D2A54BFF", 
+                "Pine"                    = "#B4B45AFF",
+                "Black Spruce"            = "#78963CFF",
+                "Black \nSpruce Wet"        = "#5A695AFF",
+                 "Stunted \nConiferous" = "#78963CFF",
+                "Conifer \nMix"             = "#87A5A5FF",
+                "Other Coniferous\n/White Spruce" = "#87A5A5FF")
+
+#landClassRas 
+
+# reclassify to Class Names
+lcrValue <- c(1, 2, 3, 4, 5)
+lcrLabel <- c("1", "2", "3", "4", "5")
+lcrLabelReclass <- c("Water", "Rock", "Bryoid", "Herbs", "Shrub")
+lcrReclassified <- data.frame(lcrValue, lcrLabel, lcrLabelReclass)
+lcrReclassified$lcrLabelReclass <- as.factor(lcrReclassified$lcrLabelReclass)
+print(lcrReclassified)
+str(lcrReclassified)
+
+lcClassLevelOrder <- c("Water", 
+                     "Rock", 
+                     "Bryoid", 
+                     "Herbs", 
+                     "Shrub")
+
+classPalLc <- c("Water"                   = "#3C6987FF",
+                "Rock"                    = "#2D3C5AFF",
+                "Bryoid"                  = "#D2D2C3FF",
+                "Herbs"                   = "#A5A587FF",
+                "Shrub"                   = "#4B3C4BFF")
+
+
+
+
+landscapeLabeled <- lapply(studyAreaList, FUN = function(sa) {
+ 
+  landscapeRasters_sa <- eval(parse(text = paste("landscapeRasters$", sa, sep = "")))
+  
+  # forClassRas
+  fRas <- landscapeRasters_sa$forClassRas
+  fRas <- categories(fRas, value = fcrReclassified, active = 2)
+
+ #dev.new()
+
+fRasPlot <- ggplot() +
+    geom_spatraster(data = fRas ) +
+    theme_classic() +
+  labs(tag = "(a)") +
+  scale_fill_manual(values = classPalFc,
+                    limits = function(x) base::intersect(fcClassLevelOrder, x),
+                    na.translate = FALSE) + 
+  guides(fill = guide_legend(ncol = 2, byrow = TRUE)) +
+    theme(
+      title = element_text(size = 14),
+      legend.position = "bottom",
+      legend.text = element_text(size = 10),
+      legend.title = element_blank(),
+      legend.key.height = unit(0.5, "cm"),
+      legend.key.width = unit(0.5, "cm"),
+      strip.background = element_rect(
+        color = "white", fill = "white", linewidth = 0.1
+      ),
+      axis.line = element_blank(),
+      axis.ticks = element_blank(),
+      axis.text.y = element_blank(),
+      axis.text.x = element_blank(),
+      axis.title.y = element_blank(),
+      axis.title.x = element_text(size = 11)
+    )
+fRasPlot
+
+# landClassRas
+
+lRas <- landscapeRasters_sa$landClassRas
+
+lRas <- categories(lRas, value = lcrReclassified, active = 2)
+
+names(lRas) <- c("landClassRas")
+
+ #dev.new()
+# plot(lRas, legend = TRUE, col = classPalLc, colNA = "white", axes = FALSE, box = FALSE)
+
+ lRasPlot <- ggplot() +
+    geom_spatraster(data = lRas) +
+    theme_classic() +
+   labs(tag = "(b)") +
+  scale_fill_manual(values = classPalLc,
+                    limits = function(x) base::intersect(lcClassLevelOrder, x),
+                    na.translate = FALSE) +
+   guides(fill = guide_legend(ncol = 2, byrow = TRUE)) +
+    theme(
+      title = element_text(size = 14),
+      legend.position = "bottom",
+      legend.text = element_text(size = 10),
+      legend.title = element_blank(),
+       legend.key.height = unit(0.5, "cm"),
+      legend.key.width = unit(0.5, "cm"),
+      strip.background = element_rect(
+        color = "white", fill = "white", linewidth = 0.1
+      ),
+      axis.line = element_blank(),
+      axis.ticks = element_blank(),
+      axis.text.y = element_blank(),
+      axis.text.x = element_blank(),
+      axis.title.y = element_blank(),
+      axis.title.x = element_text(size = 11)
+    )
+lRasPlot
+ 
+ 
+ 
+# ageRas
+aRas <- landscapeRasters_sa$ageRas
+
+#dev.new()
+# aRasPlot <- plot(aRas, colNA = "white", axes = FALSE, box = FALSE, col = agePal(75))
+aRasPlot <- ggplot() +
+    geom_spatraster(data = aRas) +
+    theme_classic() +
+ scale_fill_gradientn(colours = agePal, 
+                                na.value = "transparent") +
+  labs(tag = "(c)") +
+    theme(
+      title = element_text(size = 14),
+      legend.position = "bottom",
+      legend.text = element_text(size = 10),
+      legend.title = element_blank(),
+       legend.key.height = unit(0.5, "cm"),
+      legend.key.width = unit(1, "cm"),
+      strip.background = element_rect(
+        color = "white", fill = "white", linewidth = 0.1
+      ),
+      axis.line = element_blank(),
+      axis.ticks = element_blank(),
+      axis.text.y = element_blank(),
+      axis.text.x = element_blank(),
+      axis.title.y = element_blank(),
+      axis.title.x = element_text(size = 11)
+    )
+aRasPlot
+
+#saPlot <- ggpubr::ggarrange(fRasPlot, lRasPlot, aRasPlot, ncol=3, nrow = 1, common.legend = FALSE, align = "v")
+saPlot <- patchwork::wrap_plots(fRasPlot, lRasPlot, aRasPlot, nrow = 1)
+saPlot
+
+#save
+locationsTabSA <- locationsTab[studyArea == sa]
+ggplot2::ggsave(filename = file.path(unique(locationsTabSA$saveLocation_studyAreaFigs), paste0(sa, "_landscapeRasters.jpeg")),
+                plot = saPlot,
+                width = 20, height = 10, units = "cm")
+
+
+return(saPlot)
+})
+
+
+
+
+
+```
+
+
 # PLOT MAIN 1D PREDICTION RESULTS
 
-###make plot of 1D mean density by cover class 
+###single studyArea: make plot of 1D mean density by cover class 
 
 ```{r meanDensity1D, echo=FALSE}
+
+sa <- "AB_BCR6"
+run <- "17x10YrAgeClasses"
+
+locationsTabRun <- locationsTab[studyArea == sa & runName == run] 
 
 # make plot of 1D mean density by cover class
 spPreds1D <- lapply(spList, FUN = function(sp) {
   print(sp)
-  spPreds1D <- as.data.frame(read_csv(paste(outputFolderSpPreds, "/", sp, "_spPreds1D.csv", sep = "")))
-
+   tryCatch({
+  spPreds1D <- as.data.frame(read_csv(paste(locationsTabRun$outputFolderSpPreds, "/", sp, "_spPreds1D.csv", sep = "")))
+ 
+  #studyArea <- rep(sa, times = nrow(spPreds1D))
+  spPreds1D$studyArea <- sa
+  spPreds1D<- cbind(run, spPreds1D)
   spPreds1D$landForClass <- as.factor(spPreds1D$landForClass)
   spPreds1D$FoLRaster <- as.factor(spPreds1D$FoLRaster)
   spPreds1D$sp <- as.factor(spPreds1D$sp)
   return(spPreds1D)
+  
+},
+   error = function(e) {
+     return(NA)
+   })
 })
-names(spPreds1D) <- spList
 
-spPreds1DSingleFrame <- rbindlist(spPreds1D)
+spPreds1D <- spPreds1D[!is.na(spPreds1D)]
 
-spPreds1DSingleFrame <- rbindlist(spPreds1D[1:20])
+spPreds1D <- rbindlist(spPreds1D)
 
 
-examine1DPreds <- spPreds1DSingleFrame[, list(
+examine1DPreds <- spPreds1D[, list(
   meanDensity = mean(meanSpDensity),
   medianDensity = median(meanSpDensity),
   maxDensity = max(meanSpDensity),
@@ -837,34 +1065,47 @@ by = sp
   base::order(maxDensity)
 ]
 
+#select species wanted to include
+spPreds1D_selectSp <- examine1DPreds[1:20] #sp with highest max density
+spPreds1D_selectSp <- c(droplevels(unique(spPreds1D_selectSp$sp)))
+# spPreds1D_selectSp <- sort(c(
+#   "ALFL", "BBWA", "BCCH", "BOCH", "BRCR", "CMWA", "COYE",
+#   "DEJU", "GCKI", "CAJA", "LEFL", "MOWA", "OVEN", "PAWA",
+#   "RBNU", "RCKI", "REVI", "SWTH", "TEWA", "YRWA"
+# )) 
+spPreds1D_selectSp <- spPreds1D[sp %in% spPreds1D_selectSp]
+
 # specify class level order
-spPreds1DSingleFrame$landForClass <- factor(spPreds1DSingleFrame$landForClass,
+spPreds1D_selectSp$landForClass <- factor(spPreds1D_selectSp$landForClass,
   levels = c(
-    "landClass_1",
+     "landClass_1",
     "landClass_2",
     "landClass_3",
     "landClass_4",
     "landClass_5",
     "forClass_6",
     "forClass_7",
+    "forClass_14",
     "forClass_8",
-    "forClass_9",
     "forClass_10",
-    "forClass_11"
+    "forClass_11",
+    "forClass_13",
+    "forClass_12",
+    "forClass_9"
   )
 )
 
 
 # Make plot
 plotMeanSpDensity <- ggplot(
-  data = spPreds1DSingleFrame,
+  data = spPreds1D_selectSp,
   aes(
     x = landForClass,
     y = meanSpDensity,
     fill = landForClass
   )
 ) +
-  facet_wrap(~sp, 
+  facet_wrap( ~ sp, 
     labeller = labeller(sp = sp.labs),
     ncol = 4
   ) +
@@ -873,7 +1114,7 @@ plotMeanSpDensity <- ggplot(
   scale_fill_manual(
     values = classPal,
     labels = c(
-      "landClass_1" = "Water",
+  "landClass_1" = "Water",
     "landClass_2" = "Rock",
     "landClass_3" = "Bryoid",
     "landClass_4" = "Herbs",
@@ -883,7 +1124,10 @@ plotMeanSpDensity <- ggplot(
     "forClass_8" = "Pine",
     "forClass_9" = "Other Coniferous\n/White spruce",
     "forClass_10" = "Black \nSpruce",
-    "forClass_11" = "  Black  \nSpruce Wet"
+    "forClass_11" = "Black \nSpruce Wet",
+    "forClass_12" = "Conifer Mix",
+    "forClass_13" = "Stunted Coniferous",
+    "forClass_14" = "Broadleaf\n/Mixed"
     )
   ) +
   geom_errorbar(
@@ -925,7 +1169,281 @@ plotMeanSpDensity <- ggplot(
 plotMeanSpDensity
 
 # save
-ggsave(file.path(saveLocation_1D, "1DResults.jpeg"), plotMeanSpDensity, width = 20, height = 37, units = "cm")
+ggsave(file.path(locationsTabRun$saveLocation_Figs, "1DResults.jpeg"), plotMeanSpDensity, width = 20, height = 37, units = "cm")
+
+
+```
+
+
+###multiple StudyAreas: make plot of 1D mean density by cover class 
+
+```{r meanDensity1D_multipleSA, echo=FALSE}
+
+#put all spPreds1D tabs into one table
+spPreds1D <- lapply(studyAreaList, FUN = function(sa) {
+
+run <- "17x10YrAgeClasses"
+locationsTabRun <- locationsTab[studyArea == sa & runName == run] 
+
+# make plot of 1D mean density by cover class
+spPreds1D <- lapply(spList, FUN = function(sp) {
+  print(sp)
+   tryCatch({
+  spPreds1D <- as.data.frame(read_csv(paste(locationsTabRun$outputFolderSpPreds, "/", sp, "_spPreds1D.csv", sep = "")))
+ 
+  #studyArea <- rep(sa, times = nrow(spPreds1D))
+  spPreds1D$studyArea <- sa
+  spPreds1D<- cbind(run, spPreds1D)
+  spPreds1D$landForClass <- as.factor(spPreds1D$landForClass)
+  spPreds1D$FoLRaster <- as.factor(spPreds1D$FoLRaster)
+  spPreds1D$sp <- as.factor(spPreds1D$sp)
+  return(spPreds1D)
+  
+},
+   error = function(e) {
+     return(NA)
+   })
+})
+
+spPreds1D <- spPreds1D[!is.na(spPreds1D)]
+
+spPreds1D <- rbindlist(spPreds1D)
+
+return(spPreds1D)
+
+})
+
+spPreds1D <- rbindlist(spPreds1D)
+
+
+# make plot for each sp
+sp1DPlots <- lapply(spList, FUN = function(sp) {
+  print(sp)
+   tryCatch({
+browser()
+     
+spPreds1D_selectSp <- sp
+spPreds1D_selectSp <- spPreds1D[sp == spPreds1D_selectSp]
+     
+ # specify class level order
+spPreds1D_selectSp$landForClass <- factor(spPreds1D_selectSp$landForClass,
+  levels = c(
+     "landClass_1",
+    "landClass_2",
+    "landClass_3",
+    "landClass_4",
+    "landClass_5",
+    "forClass_6",
+    "forClass_7",
+    "forClass_14",
+    "forClass_8",
+    "forClass_10",
+    "forClass_11",
+    "forClass_13",
+    "forClass_12",
+    "forClass_9"
+  )
+)
+
+
+# Make plot
+sp1DPlots <- ggplot(
+  data = spPreds1D_selectSp,
+  aes(
+    x = landForClass,
+    y = meanSpDensity,
+    fill = landForClass
+  )
+) +
+  facet_grid(~  studyArea, 
+    labeller = labeller(studyArea = studyArea.labs),
+    ncol = 3
+  ) +
+  guides(fill = guide_legend(nrow = 2, byrow = TRUE)) +
+  geom_bar(stat = "identity") +
+  scale_fill_manual(
+    values = classPal,
+    labels = c(
+  "landClass_1" = "Water",
+    "landClass_2" = "Rock",
+    "landClass_3" = "Bryoid",
+    "landClass_4" = "Herbs",
+    "landClass_5" = "Shrub",
+    "forClass_6" = "Broadleaf",
+     "forClass_7" = "Mixed",
+    "forClass_8" = "Pine",
+    "forClass_9" = "Other Coniferous\n/White spruce",
+    "forClass_10" = "Black \nSpruce",
+    "forClass_11" = "Black \nSpruce Wet",
+    "forClass_12" = "Conifer Mix",
+    "forClass_13" = "Stunted Coniferous",
+    "forClass_14" = "Broadleaf\n/Mixed"
+    )
+  ) +
+  geom_errorbar(
+    aes(
+      ymin = meanSpDensity - seSpDensity,
+      ymax = meanSpDensity + seSpDensity
+    ),
+    width = .5
+  ) +
+  theme_minimal() +
+  ggtitle("Mean density predictions by forest or land cover class") +
+  xlab("Land or Forest Class") +
+  ylab("Mean Predicted Density (males per ha)") +
+  scale_y_continuous(breaks = pretty_breaks()) +
+  theme(
+    title = element_blank(),
+    strip.text.x = element_text(
+      size = 15
+    ),
+    strip.text.y = element_text(
+      size = 15
+    ),
+    legend.key.size = unit(0.3, units = "cm"),
+    legend.title = element_blank(),
+    legend.byrow = TRUE,
+    legend.position = "bottom",
+    legend.text = element_text(size = 12),
+    strip.background = element_rect(
+      color = "white", fill = "white", linewidth = 0.001
+    ),
+    axis.text.y = element_text(size = 15),
+    axis.text.x = element_blank(),
+    axis.title.y = element_text(size = 18),
+    axis.title.x = element_text(size = 18),
+    plot.margin = margin(0.3, 0.2, 0.2, 0.2, "cm")
+  )
+
+
+sp1DPlots
+
+# save
+ggsave(file.path(locationFigs, paste(sp, "_1DResults.jpeg", sep = "")), sp1DPlots, width = 20, height = 10, units = "cm") 
+        
+  
+  return(sp1DPlots)
+  
+},
+   error = function(e) {
+     return(NA)
+   })
+})
+
+# examine1DPreds <- spPreds1D[, list(
+#   meanDensity = mean(meanSpDensity),
+#   medianDensity = median(meanSpDensity),
+#   maxDensity = max(meanSpDensity),
+#   minDensity = min(meanSpDensity)
+# ),
+# by = sp
+# ][
+#   base::order(maxDensity)
+# ]
+
+#select species wanted to include
+# spPreds1D_selectSp <- examine1DPreds[1:20] #sp with highest max density
+# spPreds1D_selectSp <- c(droplevels(unique(spPreds1D_selectSp$sp)))
+spPreds1D_selectSp <- sort(c(
+  "OVEN", "DEJU", "GCKI", "CAJA"))  # "RBNU", "RCKI"))
+
+spPreds1D_selectSp <- spPreds1D[sp %in% spPreds1D_selectSp]
+
+# specify class level order
+spPreds1D_selectSp$landForClass <- factor(spPreds1D_selectSp$landForClass,
+  levels = c(
+     "landClass_1",
+    "landClass_2",
+    "landClass_3",
+    "landClass_4",
+    "landClass_5",
+    "forClass_6",
+    "forClass_7",
+    "forClass_14",
+    "forClass_8",
+    "forClass_10",
+    "forClass_11",
+    "forClass_13",
+    "forClass_12",
+    "forClass_9"
+  )
+)
+
+
+# Make plot
+plotMeanSpDensity <- ggplot(
+  data = spPreds1D_selectSp,
+  aes(
+    x = landForClass,
+    y = meanSpDensity,
+    fill = landForClass
+  )
+) +
+  facet_grid(sp ~  studyArea, 
+    labeller = labeller(studyArea = studyArea.labs, sp = sp.labs)
+  ) +
+  guides(fill = guide_legend(nrow = 2, byrow = TRUE)) +
+  geom_bar(stat = "identity") +
+  scale_fill_manual(
+    values = classPal,
+    labels = c(
+  "landClass_1" = "Water",
+    "landClass_2" = "Rock",
+    "landClass_3" = "Bryoid",
+    "landClass_4" = "Herbs",
+    "landClass_5" = "Shrub",
+    "forClass_6" = "Broadleaf",
+     "forClass_7" = "Mixed",
+    "forClass_8" = "Pine",
+    "forClass_9" = "Other Coniferous\n/White spruce",
+    "forClass_10" = "Black \nSpruce",
+    "forClass_11" = "Black \nSpruce Wet",
+    "forClass_12" = "Conifer Mix",
+    "forClass_13" = "Stunted Coniferous",
+    "forClass_14" = "Broadleaf\n/Mixed"
+    )
+  ) +
+  geom_errorbar(
+    aes(
+      ymin = meanSpDensity - seSpDensity,
+      ymax = meanSpDensity + seSpDensity
+    ),
+    width = .5
+  ) +
+  theme_minimal() +
+  ggtitle("Mean density predictions by forest or land cover class") +
+  xlab("Land or Forest Class") +
+  ylab("Mean Predicted Density (males per ha)") +
+  scale_y_continuous(breaks = pretty_breaks()) +
+  theme(
+    title = element_blank(),
+    strip.text.x = element_text(
+      size = 15
+    ),
+    strip.text.y = element_text(
+      size = 15
+    ),
+    legend.key.size = unit(0.3, units = "cm"),
+    legend.title = element_blank(),
+    legend.byrow = TRUE,
+    legend.position = "bottom",
+    legend.text = element_text(size = 12),
+    strip.background = element_rect(
+      color = "white", fill = "white", linewidth = 0.001
+    ),
+    axis.text.y = element_text(size = 15),
+    axis.text.x = element_blank(),
+    axis.title.y = element_text(size = 18),
+    axis.title.x = element_text(size = 18),
+    plot.margin = margin(0.3, 0.2, 0.2, 0.2, "cm")
+  )
+
+
+plotMeanSpDensity
+
+# save
+ggsave(file.path(locationFigs, "1DResults.jpeg"), plotMeanSpDensity, width = 20, height = 37, units = "cm")
+
 
 ```
 
@@ -1894,7 +2412,7 @@ lapply(spList, FUN = function(sp) {
 
 ```
 
-## Combined unimodality, normality, spearman, morans - different age classes
+## Combined unimodality, normality, spearman, morans - single study Area, different age classes
 
 ```{r plotCombinedUnimodSpearAndMoranAgeClass, echo=FALSE}
 # get data tables needed
@@ -1911,21 +2429,21 @@ assumptionsByClass2D_10 <- as.data.frame(read_csv(paste(outputFolderSpPreds_10yr
 assumptionsByClass2D_10$smoothingType[assumptionsByClass2D_10$smoothingType == "2"] <- "2_10"
 assumptionsByClass2D_10 <- assumptionsByClass2D_10[, c("landAgeClass", "noSps", "propSpsNormal", "propSpsUnimodal", "smoothingType")]
 
-#2DPS 20 yr
-assumptionsByClass2D_20 <- as.data.frame(read_csv(paste(outputFolderSpPreds_20yr, "/assumptionsByClass2D.csv", sep = "")))
-assumptionsByClass2D_20$smoothingType[assumptionsByClass2D_20$smoothingType == "2"] <- "2_20"
-assumptionsByClass2D_20 <- assumptionsByClass2D_20[, c("landAgeClass", "noSps", "propSpsNormal", "propSpsUnimodal", "smoothingType")]
-
-#2DPS 40 yr
-assumptionsByClass2D_40 <- as.data.frame(read_csv(paste(outputFolderSpPreds_40yr, "/assumptionsByClass2D.csv", sep = "")))
-assumptionsByClass2D_40$smoothingType[assumptionsByClass2D_40$smoothingType == "2"] <- "2_40"
-assumptionsByClass2D_40 <- assumptionsByClass2D_40[, c("landAgeClass", "noSps", "propSpsNormal", "propSpsUnimodal", "smoothingType")]
+# #2DPS 20 yr
+# assumptionsByClass2D_20 <- as.data.frame(read_csv(paste(outputFolderSpPreds_20yr, "/assumptionsByClass2D.csv", sep = "")))
+# assumptionsByClass2D_20$smoothingType[assumptionsByClass2D_20$smoothingType == "2"] <- "2_20"
+# assumptionsByClass2D_20 <- assumptionsByClass2D_20[, c("landAgeClass", "noSps", "propSpsNormal", "propSpsUnimodal", "smoothingType")]
+# 
+# #2DPS 40 yr
+# assumptionsByClass2D_40 <- as.data.frame(read_csv(paste(outputFolderSpPreds_40yr, "/assumptionsByClass2D.csv", sep = "")))
+# assumptionsByClass2D_40$smoothingType[assumptionsByClass2D_40$smoothingType == "2"] <- "2_40"
+# assumptionsByClass2D_40 <- assumptionsByClass2D_40[, c("landAgeClass", "noSps", "propSpsNormal", "propSpsUnimodal", "smoothingType")]
 
 assumptionsByClass <- rbind(
   assumptionsByClass1D,
-  assumptionsByClass2D_10,
-  assumptionsByClass2D_20,
-  assumptionsByClass2D_40
+  assumptionsByClass2D_10#,
+  # assumptionsByClass2D_20,
+  # assumptionsByClass2D_40
 )
 
 assumptionsByClass$smoothingType <- as.factor(assumptionsByClass$smoothingType)
@@ -2018,21 +2536,21 @@ plotNormality
 spearmanStats_10 <- as.data.frame(read_csv(paste(outputFolderSpPreds_10yr, "/spearmanStats.csv", sep = "")))
 names(spearmanStats_10) <- c("species", "spearman1D", "spearman2D_10")
 
-spearmanStats_20 <- as.data.frame(read_csv(paste(outputFolderSpPreds_20yr, "/spearmanStats.csv", sep = "")))
-names(spearmanStats_20) <- c("species", "spearman1D", "spearman2D_20")
-
-spearmanStats_40 <- as.data.frame(read_csv(paste(outputFolderSpPreds_40yr, "/spearmanStats.csv", sep = "")))
-names(spearmanStats_40) <- c("species", "spearman1D", "spearman2D_40")
+# spearmanStats_20 <- as.data.frame(read_csv(paste(outputFolderSpPreds_20yr, "/spearmanStats.csv", sep = "")))
+# names(spearmanStats_20) <- c("species", "spearman1D", "spearman2D_20")
+# 
+# spearmanStats_40 <- as.data.frame(read_csv(paste(outputFolderSpPreds_40yr, "/spearmanStats.csv", sep = "")))
+# names(spearmanStats_40) <- c("species", "spearman1D", "spearman2D_40")
 
 spearmanStats <- cbind(
-  spearmanStats_10,
-  spearmanStats_20$spearman2D_20,
-  spearmanStats_40$spearman2D_40
+  spearmanStats_10#,
+  # spearmanStats_20$spearman2D_20,
+  # spearmanStats_40$spearman2D_40
 )
-names(spearmanStats) <- c("species", "spearman1D", "spearman2D_10", "spearman2D_20", "spearman2D_40")
+names(spearmanStats) <- c("species", "spearman1D", "spearman2D_10") #, "spearman2D_20", "spearman2D_40")
 spearmanStats <- spearmanStats %>%
   pivot_longer(
-    cols = c(spearman1D, spearman2D_10, spearman2D_20, spearman2D_40), 
+    cols = c(spearman1D, spearman2D_10), #, spearman2D_20, spearman2D_40)
     names_to = "smoothingType", 
     values_to = "spearmanStat" )
 
@@ -2082,32 +2600,32 @@ plotSpearmanStats
 resStats_10 <- as.data.frame(read_csv(paste(outputFolderSpPreds_10yr, "/resStats.csv", sep = "")))
 names(resStats_10) <- c("species", "medianRes1D", "medianRes2D_10", "moran1D", "moran2D_10")
 
-resStats_20 <- as.data.frame(read_csv(paste(outputFolderSpPreds_20yr, "/resStats.csv", sep = "")))
-names(resStats_20) <- c("species", "medianRes1D", "medianRes2D_20", "moran1D", "moran2D_20")
-
-resStats_40 <- as.data.frame(read_csv(paste(outputFolderSpPreds_40yr, "/resStats.csv", sep = "")))
-names(resStats_40) <- c("species", "medianRes1D", "medianRes2D_40", "moran1D", "moran2D_40")
+# resStats_20 <- as.data.frame(read_csv(paste(outputFolderSpPreds_20yr, "/resStats.csv", sep = "")))
+# names(resStats_20) <- c("species", "medianRes1D", "medianRes2D_20", "moran1D", "moran2D_20")
+# 
+# resStats_40 <- as.data.frame(read_csv(paste(outputFolderSpPreds_40yr, "/resStats.csv", sep = "")))
+# names(resStats_40) <- c("species", "medianRes1D", "medianRes2D_40", "moran1D", "moran2D_40")
 
 resStats <- as.data.frame(cbind(
   resStats_10$species,
   resStats_10$moran1D,
-  resStats_10$moran2D_10,
-  resStats_20$moran2D_20,
-  resStats_40$moran2D_40
-))
-names(resStats) <- c("species", "moran1D", "moran2D_10", "moran2D_20", "moran2D_40")
+  resStats_10$moran2D_10))#,
+#   resStats_20$moran2D_20,
+#   resStats_40$moran2D_40
+# ))
+names(resStats) <- c("species", "moran1D", "moran2D_10")#, "moran2D_20", "moran2D_40")
 resStats$species <- as.factor(resStats$species)
 resStats$moran1D <- as.numeric(resStats$moran1D)
 resStats$moran2D_10 <- as.numeric(resStats$moran2D_10)
-resStats$moran2D_20 <- as.numeric(resStats$moran2D_20)
-resStats$moran2D_40 <- as.numeric(resStats$moran2D_40)
+# resStats$moran2D_20 <- as.numeric(resStats$moran2D_20)
+# resStats$moran2D_40 <- as.numeric(resStats$moran2D_40)
 
 
 ## moran stats plot
 
 moranStats <- resStats %>%
   pivot_longer(
-    cols = c(moran1D, moran2D_10, moran2D_20, moran2D_40), 
+    cols = c(moran1D, moran2D_10),# moran2D_20, moran2D_40), 
     names_to = "smoothingType", 
     values_to = "MoransI" 
   )
@@ -2234,6 +2752,392 @@ plotSpearAuto <- egg::ggarrange(
 ggsave(file.path(saveLocation_1D, "plotSpearAuto.jpeg"), plotSpearAuto, width = 10, height = 12, units = "cm")
 ```
 
+## Multiple study areas - Combined unimodality, normality, spearman, morans 
+
+```{r plotCombinedUnimodSpearAndMoranAgeClassManySA, echo=FALSE}
+
+
+# get data tables needed
+
+assumptionsByClass <- lapply(studyAreaList, FUN = function(sa) {
+
+locationsTabSA <- locationsTab[studyArea == sa] 
+
+run <- "17x10YrAgeClasses"
+locationsTabRun <- locationsTabSA[runName == run] 
+
+#1DPS
+assumptionsByClass1D <- as.data.table(read_csv(paste(locationsTabRun$outputFolderSpPreds, "/assumptionsByClass1D.csv", sep = "")))
+names(assumptionsByClass1D)[names(assumptionsByClass1D) == "landForClass"] <- "landAgeClass"
+assumptionsByClass1D <- assumptionsByClass1D[FoLRaster == "forClass"]
+assumptionsByClass1D <- assumptionsByClass1D[, c("landAgeClass", "noSps", "propSpsNormal", "propSpsUnimodal", "smoothingType")]
+assumptionsByClass1D <- droplevels(assumptionsByClass1D)
+
+#2DPS 10 yr
+assumptionsByClass2D_10 <- as.data.frame(read_csv(paste(locationsTabRun$outputFolderSpPreds, "/assumptionsByClass2D.csv", sep = "")))
+assumptionsByClass2D_10$smoothingType[assumptionsByClass2D_10$smoothingType == "2"] <- "2_10"
+assumptionsByClass2D_10 <- assumptionsByClass2D_10[, c("landAgeClass", "noSps", "propSpsNormal", "propSpsUnimodal", "smoothingType")]
+
+# #2DPS 20 yr
+# assumptionsByClass2D_20 <- as.data.frame(read_csv(paste(outputFolderSpPreds_20yr, "/assumptionsByClass2D.csv", sep = "")))
+# assumptionsByClass2D_20$smoothingType[assumptionsByClass2D_20$smoothingType == "2"] <- "2_20"
+# assumptionsByClass2D_20 <- assumptionsByClass2D_20[, c("landAgeClass", "noSps", "propSpsNormal", "propSpsUnimodal", "smoothingType")]
+# 
+# #2DPS 40 yr
+# assumptionsByClass2D_40 <- as.data.frame(read_csv(paste(outputFolderSpPreds_40yr, "/assumptionsByClass2D.csv", sep = "")))
+# assumptionsByClass2D_40$smoothingType[assumptionsByClass2D_40$smoothingType == "2"] <- "2_40"
+# assumptionsByClass2D_40 <- assumptionsByClass2D_40[, c("landAgeClass", "noSps", "propSpsNormal", "propSpsUnimodal", "smoothingType")]
+
+assumptionsByClass <- rbind(
+  assumptionsByClass1D,
+  assumptionsByClass2D_10#,
+  # assumptionsByClass2D_20,
+  # assumptionsByClass2D_40
+)
+
+studyArea <- rep(sa, times = nrow(assumptionsByClass))
+assumptionsByClass <- cbind(studyArea, assumptionsByClass)
+
+return(assumptionsByClass)
+})
+
+assumptionsByClass <- rbindlist(assumptionsByClass)
+
+assumptionsByClass$smoothingType <- as.factor(assumptionsByClass$smoothingType)
+assumptionsByClass$studyArea <- as.factor(assumptionsByClass$studyArea)
+assumptionsByClass$landAgeClass <- as.factor(assumptionsByClass$landAgeClass)
+
+# unimodality plot
+plotUnimodality <- ggplot(
+  data = assumptionsByClass,
+  aes(fill = smoothingType, y = propSpsUnimodal, x = studyArea)
+) +
+  geom_violin(width = 0.95) +
+  # annotate("text",
+  #   x = 1:length(table(assumptionsByClass$smoothingType)),
+  #   y = aggregate(propSpsUnimodal ~ smoothingType, assumptionsByClass, max)[, 2],
+  #   label = paste("n = ", table(assumptionsByClass$smoothingType), sep = ""),
+  #   size = 3,
+  #   vjust = -1
+  # ) +
+  ggtitle("Proportion of bird species per class \nwith a unimodal distribution (p < 0.05)") +
+  xlab("Species") +
+  ylab("Proportion of bird \nspecies unimodal") +
+  scale_y_continuous(breaks = pretty_breaks(), limits = c(NA, 1)) +
+  theme_classic() +
+  # scale_x_discrete(labels = c(
+  #   "1" = "1DPS",
+  #   "2_10" = "2DPS (10-year\n age classes)",
+  #   "2_20" = "2DPS (20-year\n age classes)",
+  #   "2_40" = "2DPS (40-year\n age classes)"
+  # )) +
+  scale_fill_manual(values = colRuns) +
+  theme(
+    title = element_text(size = 12),
+    legend.title = element_blank(),
+    legend.position = "none",
+    legend.text = element_blank(),
+    axis.text.x = element_text(size = 9, angle = 45, hjust = 1),
+    axis.text.y = element_text(size = 9),
+    axis.title.y = element_text(size = 10),
+    axis.title.x = element_blank(),
+    plot.margin = margin(0.5, 0.5, 0, 0.5, "cm"),
+    axis.line.y = element_line(linewidth = 1)
+  )
+
+plotUnimodality
+
+
+# normality plot
+plotNormality <- ggplot(
+  data = assumptionsByClass,
+  aes(fill = smoothingType, y = propSpsNormal, x = studyArea)
+) +
+  geom_violin(width = 0.95) +
+  # annotate("text",
+  #   x = 1:length(table(assumptionsByClass$smoothingType)),
+  #   y = aggregate(propSpsNormal ~ smoothingType, assumptionsByClass, max)[, 2],
+  #   label = paste("n = ", table(assumptionsByClass$smoothingType), sep = ""),
+  #   size = 3,
+  #   vjust = -1
+  # ) +
+  ggtitle("Proportion of bird species per class \nwith a normal distribution (p < 0.05)") +
+  xlab("Species") +
+  ylab("Proportion of bird \nspecies normal") +
+  scale_y_continuous(breaks = pretty_breaks(), limits = c(NA, 0.35)) +
+  theme_classic() +
+  # scale_x_discrete(labels = c(
+  #   "1" = "1DPS",
+  #   "2_10" = "2DPS (10-year\n age classes)",
+  #   "2_20" = "2DPS (20-year\n age classes)",
+  #   "2_40" = "2DPS (40-year\n age classes)"
+  # )) +
+  scale_fill_manual(values = colRuns) +
+  theme(
+    title = element_text(size = 12),
+    legend.title = element_blank(),
+    legend.position = "none",
+    legend.text = element_blank(),
+    axis.text.x = element_text(size = 9, angle = 45, hjust = 1),
+    axis.text.y = element_text(size = 9),
+    axis.title.y = element_text(size = 10),
+    axis.title.x = element_blank(),
+    plot.margin = margin(0.5, 0.5, 0, 0.5, "cm"),
+    axis.line.y = element_line(linewidth = 1)
+  )
+
+plotNormality
+
+##################################################################
+
+spearmanStats <- lapply(studyAreaList, FUN = function(sa) {
+
+locationsTabSA <- locationsTab[studyArea == sa] 
+run <- "17x10YrAgeClasses"
+locationsTabRun <- locationsTabSA[runName == run]  
+ 
+#    spearmanStats
+spearmanStats_10 <- as.data.frame(read_csv(paste(locationsTabRun$outputFolderSpPreds, "/spearmanStats.csv", sep = "")))
+names(spearmanStats_10) <- c("species", "spearman1D", "spearman2D_10")
+
+# spearmanStats_20 <- as.data.frame(read_csv(paste(outputFolderSpPreds_20yr, "/spearmanStats.csv", sep = "")))
+# names(spearmanStats_20) <- c("species", "spearman1D", "spearman2D_20")
+# 
+# spearmanStats_40 <- as.data.frame(read_csv(paste(outputFolderSpPreds_40yr, "/spearmanStats.csv", sep = "")))
+# names(spearmanStats_40) <- c("species", "spearman1D", "spearman2D_40")
+
+spearmanStats <- cbind(
+  spearmanStats_10#,
+  # spearmanStats_20$spearman2D_20,
+  # spearmanStats_40$spearman2D_40
+)
+names(spearmanStats) <- c("species", "spearman1D", "spearman2D_10") #, "spearman2D_20", "spearman2D_40")
+spearmanStats <- spearmanStats %>%
+  pivot_longer(
+    cols = c(spearman1D, spearman2D_10), #, spearman2D_20, spearman2D_40)
+    names_to = "smoothingType", 
+    values_to = "spearmanStat" )
+
+studyArea <- rep(sa, times = nrow(spearmanStats))
+spearmanStats <- as.data.table(cbind(studyArea, spearmanStats))
+
+return(spearmanStats)
+})
+
+
+
+plotSpearmanStats <- ggplot(
+  data = spearmanStats,
+  aes(
+    y = spearmanStat,
+    x = studyArea,
+    fill = smoothingType
+  )
+) +
+  geom_violin(width = 0.95) +
+  geom_boxplot(width = 0.15, color = "grey") +
+  ggtitle("Correlation between BAM national models \nand mapped predictions, across sp species") +
+  # scale_x_discrete(labels = c(
+  #   "spearman1D" = "1DPS",
+  #   "spearman2D_10" = "2DPS (10-year\n age classes)",
+  #   "spearman2D_20" = "2DPS (20-year\n age classes)",
+  #   "spearman2D_40" = "2DPS (40-year\n age classes)"
+  # )) +
+  ylab("Spearman's \ncoefficient (p)") +
+  scale_y_continuous(breaks = pretty_breaks()) +
+  theme_classic() +
+  scale_fill_manual(
+    values = colRuns,
+    labels = c("1D Piecewise\n Smoothing", "2D Piecewise\n Smoothing")
+  ) +
+  theme(
+    title = element_text(size = 12),
+    legend.title = element_blank(),
+    legend.position = "none",
+    legend.text = element_text(size = 10),
+    axis.text.x = element_text(size = 9, angle = 45, hjust = 1),
+    axis.text.y = element_text(size = 9),
+    axis.title.y = element_text(size = 10),
+    axis.title.x = element_blank(),
+    plot.margin = margin(0.2, 0.2, 0.2, 0.2, "cm")
+  )
+
+plotSpearmanStats
+
+
+#################################################################
+
+# resStats
+
+resStats <- lapply(studyAreaList, FUN = function(sa) {
+
+locationsTabSA <- locationsTab[studyArea == sa] 
+run <- "17x10YrAgeClasses"
+locationsTabRun <- locationsTabSA[runName == run]  
+
+resStats_10 <- as.data.frame(read_csv(paste(locationsTabRun$outputFolderSpPreds, "/resStats.csv", sep = "")))
+names(resStats_10) <- c("species", "medianRes1D", "medianRes2D_10", "moran1D", "moran2D_10")
+
+# resStats_20 <- as.data.frame(read_csv(paste(outputFolderSpPreds_20yr, "/resStats.csv", sep = "")))
+# names(resStats_20) <- c("species", "medianRes1D", "medianRes2D_20", "moran1D", "moran2D_20")
+# 
+# resStats_40 <- as.data.frame(read_csv(paste(outputFolderSpPreds_40yr, "/resStats.csv", sep = "")))
+# names(resStats_40) <- c("species", "medianRes1D", "medianRes2D_40", "moran1D", "moran2D_40")
+
+resStats <- as.data.frame(cbind(
+  resStats_10$species,
+  resStats_10$moran1D,
+  resStats_10$moran2D_10))#,
+#   resStats_20$moran2D_20,
+#   resStats_40$moran2D_40
+# ))
+names(resStats) <- c("species", "moran1D", "moran2D_10")#, "moran2D_20", "moran2D_40")
+resStats$species <- as.factor(resStats$species)
+resStats$moran1D <- as.numeric(resStats$moran1D)
+resStats$moran2D_10 <- as.numeric(resStats$moran2D_10)
+# resStats$moran2D_20 <- as.numeric(resStats$moran2D_20)
+# resStats$moran2D_40 <- as.numeric(resStats$moran2D_40)
+
+studyArea <- rep(sa, times = nrow(resStats))
+resStats <- as.data.table(cbind(studyArea, resStats))
+
+return(resStats)
+})
+
+resStats <- rbindlist(resStats)
+
+## moran stats plot
+
+moranStats <- resStats %>%
+  pivot_longer(
+    cols = c(moran1D, moran2D_10),# moran2D_20, moran2D_40), 
+    names_to = "smoothingType", 
+    values_to = "MoransI" 
+  )
+
+
+plotAutocorStats <- ggplot(
+  data = moranStats,
+  aes(
+    fill = factor(smoothingType,
+      levels = c(
+        "moran1D",
+        "moran2D_10"#,
+        #"moran2D_20",
+        #"moran2D_40"
+      )
+    ),
+    y = MoransI,
+    x = studyArea
+  )
+) +
+  geom_violin(width = 0.95) +
+  geom_boxplot(width = 0.15, color = "grey") +
+  ggtitle("Spatial autocorrelation of mapped residuals, \nacross bird species") +
+  ylab("Moran's I") +
+  scale_y_continuous(breaks = pretty_breaks()) +
+  # scale_x_discrete(labels = c(
+  #   "moran1D" = "1DPS",
+  #   "moran2D_10" = "2DPS (10-year\n age classes)",
+  #   "moran2D_20" = "2DPS (20-year\n age classes)",
+  #   "moran2D_40" = "2DPS (40-year\n age classes)"
+  # )) +
+  theme_classic() +
+  scale_fill_manual(
+    values = colRuns,
+    labels = c("moran1D", "moran2D")
+  ) +
+  theme(
+    title = element_text(size = 12),
+    legend.title = element_blank(),
+    legend.position = "none",
+    legend.text = element_text(size = 10),
+    axis.text.x = element_text(size = 9, angle = 45, hjust = 1),
+    axis.text.y = element_text(size = 9),
+    axis.title.y = element_text(size = 10),
+    axis.title.x = element_blank(),
+    plot.margin = margin(0.2, 0.2, 0.2, 0.2, "cm")
+  )
+
+plotAutocorStats
+
+#################################################################
+
+
+allMatrixPlot <- egg::ggarrange(
+  plotUnimodality +
+    theme(
+      axis.text.x = element_blank(),
+      axis.title.x = element_blank(),
+      title = element_blank(),
+      legend.position = "none"
+    ),
+  plotNormality +
+    theme(
+      axis.text.x = element_blank(),
+      axis.title.x = element_blank(),
+      title = element_blank(),
+      legend.position = "none"
+    ),
+  plotSpearmanStats +
+    theme(
+      axis.text.x = element_blank(),
+      axis.title.x = element_blank(),
+      title = element_blank(),
+      legend.position = "none"
+    ),
+  plotAutocorStats +
+    theme(title = element_blank()),
+  ncol = 1,
+  labels = c("(a)", "(b)", "(c)", "(d)"),
+  label.args = list(gp = gpar(font = 4, fontsize = 12), x = unit(1, "line"), hjust = 1)
+)
+
+
+ggsave(file.path(saveLocation_1D, "unimodSpearmanAutocor.jpeg"), allMatrixPlot, width = 14, height = 25, units = "cm")
+
+
+############################################################################
+
+
+plotUniNorm <- egg::ggarrange(
+  plotUnimodality +
+    theme(
+      axis.text.x = element_blank(),
+      axis.title.x = element_blank(),
+      title = element_blank(),
+      legend.position = "none"
+    ),
+  plotNormality +
+    theme(title = element_blank()),
+  ncol = 1,
+  labels = c("(a)", "(b)"),
+  label.args = list(gp = gpar(font = 4, fontsize = 12), x = unit(1, "line"), hjust = 1)
+)
+
+ggsave(file.path(saveLocation_1D, "plotUniNorm.jpeg"), plotUniNorm, width = 10, height = 12, units = "cm")
+
+
+#########################################################################################
+
+
+plotSpearAuto <- egg::ggarrange(
+  plotSpearmanStats +
+    theme(
+      axis.text.x = element_blank(),
+      axis.title.x = element_blank(),
+      title = element_blank(),
+      legend.position = "none"
+    ),
+  plotAutocorStats +
+    theme(title = element_blank()),
+  ncol = 1,
+  labels = c("(a)", "(b)"),
+  label.args = list(gp = gpar(font = 4, fontsize = 12), x = unit(1, "line"), hjust = 1)
+)
+
+ggsave(file.path(saveLocation_1D, "plotSpearAuto.jpeg"), plotSpearAuto, width = 10, height = 12, units = "cm")
+```
 
 
 ##Tables of test stats
@@ -2311,41 +3215,54 @@ gtsave(tabMoran, "moranStatsTab.png", path = saveLocation_1D, expand = 50)
 
 ```{r plotExampleBirdRasters, echo=FALSE}
 
+sa <- "AB_BCR6"
+run <- "17x10YrAgeClasses"
+
+#locationsTabSA <- locationsTab[studyArea == sa] 
+locationsTabRun <- locationsTab[studyArea == sa & runName == run] 
+
 
 lapply(spList, FUN = function(sp) {
-  
+
+  tryCatch({
+
   print(sp)
 
-  nameSp <- spNames[sp, ]
-  nmRas <- terra::rast(paste(locationSpRas, "/", sp, sep = ""))
+  nameSp <- spNames[spCode == sp ]
+  nameSp <- nameSp$spNameEnglish
+  
+  nmRas <- terra::rast(file.path(locationSpRas, sp))
   # postProcess nmRas
   nmRas <- reproducible::postProcessTo(
         from = nmRas,
-    projectTo = rasterToMatch,
-    cropTo = studyArea,
-    maskTo = studyArea,
+        to = eval(parse(text = paste("landscapeRasters$", sa, "$rasterToMatch", sep = ""))),
+    # projectTo = rasterToMatch,
+    # cropTo = studyArea,
+    # maskTo = studyArea,
   overwrite = FALSE,
   verbose = TRUE
     )
 
-  mapRas <- terra::rast(paste(outputFolderSpPredsRasters, "/", sp, "_for2DAndLc1DMap", sep = ""))
+  mapRas <- terra::rast(paste(locationsTabRun$outputFolderSpPredsRasters, "/", sp, "_for2DAndLc1DMap", sep = ""))
   
   # postProcess nmRas
   mapRas <- reproducible::postProcessTo(
         from = mapRas,
-    projectTo = rasterToMatch,
-    cropTo = studyArea,
-    maskTo = studyArea,
+        to = eval(parse(text = paste("landscapeRasters$", sa, "$rasterToMatch", sep = ""))),
+    # projectTo = rasterToMatch,
+    # cropTo = studyArea,
+    # maskTo = studyArea,
   overwrite = FALSE,
   verbose = TRUE
     )
-  resRas <- terra::rast(paste(outputFolderSpPredsRasters, "/", sp, "_for2DAndLc1DRes", sep = ""))
+  resRas <- terra::rast(paste(locationsTabRun$outputFolderSpPredsRasters, "/", sp, "_for2DAndLc1DRes", sep = ""))
     # postProcess nmRas
   resRas <- reproducible::postProcessTo(
         from = resRas,
-    projectTo = rasterToMatch,
-    cropTo = studyArea,
-    maskTo = studyArea,
+    to = eval(parse(text = paste("landscapeRasters$", sa, "$rasterToMatch", sep = ""))),
+    # projectTo = rasterToMatch,
+    # cropTo = studyArea,
+    # maskTo = studyArea,
   overwrite = FALSE,
   verbose = TRUE
     )
@@ -2353,9 +3270,9 @@ lapply(spList, FUN = function(sp) {
   allRasters <- c(nmRas, mapRas, resRas)
   names(allRasters) <- c("Species Density Raster", "2DPS Prediction", "Residual")
 
-  studyArea <- terra::project(studyArea, y = "+proj=longlat +datum=WGS84")
-  allRasters <- terra::project(allRasters, y = "+proj=longlat +datum=WGS84")
-  allRasters <- crop(allRasters, studyArea)
+  # studyArea <- terra::project(studyArea, y = "+proj=longlat +datum=WGS84")
+  # allRasters <- terra::project(allRasters, y = "+proj=longlat +datum=WGS84")
+  # allRasters <- crop(allRasters, studyArea)
 
   rasterPlot <- ggplot() +
     geom_spatraster(data = allRasters) +
@@ -2391,8 +3308,14 @@ lapply(spList, FUN = function(sp) {
       axis.title.y = element_blank(),
       axis.title.x = element_text(size = 11)
     )
-
-  ggsave(file.path(paste(saveLocation, "/", sp, "_rasterPlots.jpeg", sep = "")), rasterPlot, width = 24, height = 14, units = "cm")
+rasterPlot
+  ggsave(file.path(paste(locationsTabRun$saveLocation_Figs, "/", sp, "_rasterPlots.jpeg", sep = "")), rasterPlot, width = 24, height = 14, units = "cm")
+  
+  },
+   error = function(e) {
+     return(NA)
+   }
+   )
 })
 ```
 
