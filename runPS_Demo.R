@@ -11,16 +11,16 @@ maxAgeClass <- 17 #17, # 9, #5, # choose number of age classes
 # put outputs for each set of age classes/different study area in separate folder
 province <- "AB" #"AB" #"QC" # "NT"  ## used only for naming, not needed for module functionality
 bcr <-  "6" #"6"#"8_12" #"7"  ## used only for naming, not needed for module functionality
-runName <- paste(maxAgeClass, "x", ageGrouping, "YrAgeClasses_", province, "_", bcr, sep = "")
-#runName <- "9x20yrAgeClasses"
-#runName <- "5x40yrAgeClasses"
+.studyAreaName <- paste("studyArea_", province, "_BCR", bcr, ".shp", sep = "")
+
+runName <- paste(maxAgeClass, "x", ageGrouping, "YrAgeClasses", sep = "") 
 
 setPaths(
   modulePath = file.path("./modules"),
   cachePath = file.path("./cache"),
   scratchPath = file.path("./scratch"),
   inputPath = file.path("./inputs"),
-  outputPath = file.path("./outputs", runName)
+  outputPath = file.path("./outputs", tools::file_path_sans_ext(.studyAreaName), runName)
 )
 simPaths <- getPaths()
 
@@ -35,7 +35,6 @@ simPaths <- getPaths()
 # locationStudyArea <- file.path(Paths$inputPath, "studyArea", tools::file_path_sans_ext(.studyAreaName))
 # studyArea <- terra::vect(file.path(locationStudyArea, .studyAreaName))
 
-.studyAreaName <- paste("studyArea_", province, "_BCR", bcr, ".shp", sep = "")
 locationStudyArea <- checkPath(file.path(Paths$inputPath, "studyArea", tools::file_path_sans_ext(.studyAreaName)), create = TRUE)
 studyArea <- terra::vect(file.path(locationStudyArea, .studyAreaName))
 
@@ -58,7 +57,7 @@ locationAge <- locationLandscapeRasters
 # zen4R::download_zenodo(doi = "10.5281/zenodo.17516504", path = locationSpRas)
 # unzip(file.path(locationSpRas, "meanSpRasters.zip"), exdir = locationSpRas)
 locationSpRas <- locationSpRas <- file.path(Paths$inputPath, "spRasters", "meanSpRasters")
-locationWtRas <- file.path(Paths$inputPath, "spRasters", "wtRas_A")
+locationWtRas <- file.path(Paths$inputPath, "spRasters", "wtRas_B")
 #namePattern <- ".tif"
 spNameSubstr <- c(1,4) 
 excludeList <- c("EUST", "HOSP", "ROPI") # specify any species to exclude. Here, we exclude non-native species
@@ -99,15 +98,15 @@ simParams <- list(
     rasterToMatchName = rasterToMatchName,
     studyAreaLocation = locationStudyArea,
     excludeList = excludeList,
-    areaThreshold = 0.5,
-    probOfOccurrenceThreshold = 0.05
+    areaThreshold = 0.01,
+    probOfOccurrenceThreshold = 0.25
   ),
   PS = list(
     doPredsInitialTime = 1,
     .plotInitialTime = 1,
     .saveInitialTime = 1,
-    parallelOption = FALSE, #TRUE 
-    nTrees =  1000, #glm number of trees
+    parallelOption = FALSE, #TRUE # FALSE
+    nTrees =  20000, #glm number of trees
     ageGrouping = ageGrouping, # choose age class width
     maxAgeClass = maxAgeClass, # choose number of age classes
     only1DPS = FALSE, # choose 1DPS or 2DPS
@@ -130,7 +129,7 @@ simParams <- list(
     doPredsInitialTime = 1,
     .plotInitialTime = 1,
     .saveInitialTime = 1,
-    min2DStatsSample = 100,
+    min2DStatsSample = 30,
     #spList = spList, # species to include in analysis
     only1DPS = FALSE # choose 1DPS or 2DPS
   )
