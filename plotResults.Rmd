@@ -276,31 +276,43 @@ plot(landscapeRasters$NT_BCR7$forClassRas)
 
 ### Sp Info Table
 ```{r spInfo, echo=FALSE}
-commonName <- c("Alder Flycatcher", "Bay-breasted Warbler", "Black-capped Chickadee", "Boreal Chickadee", "Brown Creeper", "Canada Jay", "Cape May Warbler", "Common Yellowthroat", "Dark-eyed Junco", "Golden-crowned Kinglet", "Least Flycatcher", "Mourning Warbler", "Ovenbird", "Palm Warbler", "Red-breasted Nuthatch", "Ruby-crowned Kinglet", "Red-eyed Vireo", "Swainson’s Thrush", "Tennessee Warbler", "Yellow-rumped Warbler")
+ 
+run <- runNames[1]
+  
+spListTabs <- lapply(studyAreaList, FUN = function(sa) { 
+print(sa)
 
-scientificName <- c(
-  "Empidonax alnorum", "Setophaga castanea", "Poecile atricapillus", "Poecile hudsonicus", "Certhia americana", "Perisoreus canadensis", "Setophaga tigrina", "Geothlypis trichas",
-  "Junco hyemalis", "Regulus satrapa", "Empidonax minimus", "Geothlypis philadelphia", "Seiurus aurocapilla", "Setophaga palmarum", "Sitta canadensis", "Regulus calendula", "Vireo olivaceus", "Catharus ustulatus", "Leiothlypis peregrina", "Setophaga coronata"
-)
+locationsTabRun <- locationsTab[studyArea == sa & runName == run] 
+spListTab <- as.data.table(read.csv(paste(locationsTabRun$outputFolderSpPreds, "/spList.csv", sep = "")))
+spListTab <- spListTab[, c("species", "status")]
+spListTab$status[spListTab$status == "exclude"] <- NA
 
-spInfo <- data.frame(commonName, scientificName)
-names(spInfo) <- c("Common Name", "Scientific Name")
+print(paste("spList length: ", length(na.omit(spListTab$status)), sep = ""))
 
-spInfoTab <- gt::gt(spInfo) |>
-  tab_style(
-    locations = list(
-      cells_body(
-        columns = "Scientific Name", rows = c(1:20)
-      )
-    ),
-    style = list(
-      cell_text(style = "italic")
-    )
-  )
+spListTab <- setnames(spListTab, 
+                      c("spCode", studyArea.labs[sa]))
 
-spInfoTab
+return(spListTab)
+})
 
-gtsave(spInfoTab, "spInfoTab.png", path = saveLocation_1D)
+spListTabs <- as.data.table(Reduce(
+  function(x, y) merge(x, y, by = "spCode", all = TRUE),
+  spListTabs))
+
+studyAreaCols <- setdiff(names(spListTabs), "spCode")
+
+spInfoTab <- spNames[, c("spCode", "spNameEnglish", "spScientificName")][order(spNames$spNameEnglish), ]
+spInfoTab <- setnames(spInfoTab, c("spCode", "Common Name", "Scientific Name"))
+spInfoTab <- left_join(spInfoTab, spListTabs, by = "spCode")
+spInfoTab <- spInfoTab[, !c("spCode")]
+
+
+#remove any sp that were not used anywhere
+spInfoTab <- spInfoTab[
+  rowSums(!is.na(spInfoTab[, ..studyAreaCols])) > 0]
+
+print(spInfoTab)
+
 ```
 
 
@@ -1066,13 +1078,13 @@ by = sp
 ]
 
 #select species wanted to include
-spPreds1D_selectSp <- examine1DPreds[1:20] #sp with highest max density
-spPreds1D_selectSp <- c(droplevels(unique(spPreds1D_selectSp$sp)))
-# spPreds1D_selectSp <- sort(c(
-#   "ALFL", "BBWA", "BCCH", "BOCH", "BRCR", "CMWA", "COYE",
-#   "DEJU", "GCKI", "CAJA", "LEFL", "MOWA", "OVEN", "PAWA",
-#   "RBNU", "RCKI", "REVI", "SWTH", "TEWA", "YRWA"
-# )) 
+# spPreds1D_selectSp <- examine1DPreds[1:20] #sp with highest max density
+# spPreds1D_selectSp <- c(droplevels(unique(spPreds1D_selectSp$sp)))
+spPreds1D_selectSp <- sort(c(
+  "ALFL", "BBWA", "BCCH", "BOCH", "BRCR", "CMWA", "COYE",
+  "DEJU", "GCKI", "CAJA", "LEFL", "MOWA", "OVEN", "PAWA",
+  "RBNU", "RCKI", "REVI", "SWTH", "TEWA", "YRWA"
+))
 spPreds1D_selectSp <- spPreds1D[sp %in% spPreds1D_selectSp]
 
 # specify class level order
@@ -1451,23 +1463,36 @@ ggsave(file.path(locationFigs, "1DResults.jpeg"), plotMeanSpDensity, width = 20,
 # PLOT 2D PREDICTION RESULTS
 
 
-####### 10 yr age classes
+####### single studyArea: 10 yr age classes
 
 ```{r plotSpMatricies, echo=FALSE}
+
+sa <- "AB_BCR6"
+run <- "17x10YrAgeClasses"
+locationsTabRun <- locationsTab[studyArea == sa & runName == run] 
+
 # make plot of 2D sp density predictions
 
 # get matricies
 spMatricies <- lapply(spList, FUN = function(sp) {
- 
-    spMatrix <- as.data.frame(read_csv(paste(outputFolderSpPreds_10yr, "/", sp, "_matrix.csv", sep = "")))
-  print(spMatrix)
+   print(sp)
+  tryCatch({
+    
+    spMatrix <- as.data.frame(read_csv(paste(locationsTabRun$outputFolderSpPreds, "/", sp, "_matrix.csv", sep = "")))
+     print(spMatrix)
+  
   return(spMatrix)
+    },
+   error = function(e) {
+     return(NA)
+   })
 })
+
 names(spMatricies) <- spList
 
-
 matrixAsTables <- lapply(X = spList, FUN = function(sp) {
-#browser()
+   tryCatch({
+  #browser()
   matrix <- eval(parse(text = paste("spMatricies$", sp, sep = "")))
   rownames(matrix) <- c(matrix[,1])
   matrix <- matrix[2:ncol(matrix)]
@@ -1475,8 +1500,9 @@ matrixAsTables <- lapply(X = spList, FUN = function(sp) {
   tab <- reshape2::melt(matrix)
   colnames(tab) <- c("forClass", "ageClass", "spDensityPred")
   species <- rep(paste(sp), nrow(tab))
+  studyArea <- rep(paste(sa), nrow(tab))
   maxDensity <- rep(max(tab$spDensityPred), nrow(tab))
-  tab <- cbind(tab, species = species, maxDensity = maxDensity)
+  tab <- cbind(tab, species = species, maxDensity = maxDensity, studyArea = studyArea)
   tab$ageClass <- as.integer(tab$ageClass)
   tab$forClass <- as.character(tab$forClass)
   tab$species <- as.character(tab$species)
@@ -1485,25 +1511,36 @@ matrixAsTables <- lapply(X = spList, FUN = function(sp) {
   print(tab)
 
   return(tab)
+},
+   error = function(e) {
+     return(NA)
+   })
 })
 
+matrixAsTables <- matrixAsTables[!is.na(matrixAsTables)]
+saPreds2DPS <- rbindlist(matrixAsTables)
 
-names(matrixAsTables) <- spList
-
-dataFrameForGraph <- rbindlist(matrixAsTables)
-dataFrameForGraph <- dataFrameForGraph[base::order(maxDensity)]
-speciesInOrder <- unique(dataFrameForGraph$species)
 
 # make dataframe of sps you want to include
-spsWanted <- c(speciesInOrder[1:10])
-#spsWanted <- speciesInOrder[11:20]
-dataFrameForGraph <- dataFrameForGraph[dataFrameForGraph[["species"]] %in% spsWanted]
+selectSp <- sort(c(
+  "ALFL", "BBWA", "BCCH", "BOCH", "BRCR", "CMWA", "COYE",
+  "DEJU", "GCKI", "CAJA", "LEFL", "MOWA", "OVEN", "PAWA",
+  "RBNU", "RCKI", "REVI", "SWTH", "TEWA", "YRWA"
+))
+saPreds2DPS <- saPreds2DPS[saPreds2DPS[["species"]] %in% selectSp]
+
+#order species
+saPreds2DPS <- saPreds2DPS[base::order(maxDensity)]
+speciesInOrder <- unique(saPreds2DPS$species)
+#spsWanted <- c(speciesInOrder[1:10])
+spsWanted <- speciesInOrder[11:20]
+saPreds2DPS <- saPreds2DPS[saPreds2DPS[["species"]] %in% spsWanted]
 
 # specify class level order
-dataFrameForGraph$species <- factor(dataFrameForGraph$species,
+saPreds2DPS$species <- factor(saPreds2DPS$species,
   levels = spsWanted
 )
-dataFrameForGraph$forClass <- factor(dataFrameForGraph$forClass,
+saPreds2DPS$forClass <- factor(saPreds2DPS$forClass,
   levels = c(
     "6",
     "7",
@@ -1520,7 +1557,7 @@ names(class.labs) <- c("6", "7", "8", "9", "10", "11")
 
 #plot
 plotMeanSpDensity2D <- ggplot(
-  data = dataFrameForGraph,
+  data = saPreds2DPS,
   aes(y = spDensityPred, x = ageClass, fill = forClass)
 ) + 
   geom_bar(position = "dodge", stat = "identity") +
@@ -1568,7 +1605,7 @@ plotMeanSpDensity2D <- ggplot(
   )
 
 plotMeanSpDensity2D
-ggsave(file.path(saveLocation_10yr, "2DResults1.jpeg"), plotMeanSpDensity2D, width = 22, height = 30, units = "cm")
+ggsave(file.path(locationsTabRun$saveLocation_Figs, "2DResults2.jpeg"), plotMeanSpDensity2D, width = 30, height = 40, units = "cm")
 
 
 ```
@@ -1722,12 +1759,12 @@ matrixAsTables <- lapply(X = spList, FUN = function(sp) {
 })
 
 names(matrixAsTables) <- spList
-
 dataFrameForGraph <- rbindlist(matrixAsTables)
 dataFrameForGraph <- dataFrameForGraph[base::order(maxDensity)]
 speciesInOrder <- unique(dataFrameForGraph$species)
 
 # make dataframe of sps you want to include
+spInOrder <- 
 spsWanted <- c(speciesInOrder[1:10])
 #spsWanted <- speciesInOrder[11:20]
 
@@ -2924,7 +2961,7 @@ spearmanStats <- as.data.table(cbind(studyArea, spearmanStats))
 return(spearmanStats)
 })
 
-
+spearmanStats <- rbindlist(spearmanStats)
 
 plotSpearmanStats <- ggplot(
   data = spearmanStats,
@@ -2935,7 +2972,7 @@ plotSpearmanStats <- ggplot(
   )
 ) +
   geom_violin(width = 0.95) +
-  geom_boxplot(width = 0.15, color = "grey") +
+  #geom_boxplot(width = 0.15, color = "grey") +
   ggtitle("Correlation between BAM national models \nand mapped predictions, across sp species") +
   # scale_x_discrete(labels = c(
   #   "spearman1D" = "1DPS",
@@ -3032,7 +3069,7 @@ plotAutocorStats <- ggplot(
   )
 ) +
   geom_violin(width = 0.95) +
-  geom_boxplot(width = 0.15, color = "grey") +
+  #geom_boxplot(width = 0.15, color = "grey") +
   ggtitle("Spatial autocorrelation of mapped residuals, \nacross bird species") +
   ylab("Moran's I") +
   scale_y_continuous(breaks = pretty_breaks()) +
@@ -3094,7 +3131,7 @@ allMatrixPlot <- egg::ggarrange(
 )
 
 
-ggsave(file.path(saveLocation_1D, "unimodSpearmanAutocor.jpeg"), allMatrixPlot, width = 14, height = 25, units = "cm")
+ggsave(file.path(locationFigs, "unimodSpearmanAutocor.jpeg"), allMatrixPlot, width = 14, height = 25, units = "cm")
 
 
 ############################################################################
@@ -3115,7 +3152,7 @@ plotUniNorm <- egg::ggarrange(
   label.args = list(gp = gpar(font = 4, fontsize = 12), x = unit(1, "line"), hjust = 1)
 )
 
-ggsave(file.path(saveLocation_1D, "plotUniNorm.jpeg"), plotUniNorm, width = 10, height = 12, units = "cm")
+ggsave(file.path(locationFigs, "plotUniNorm.jpeg"), plotUniNorm, width = 10, height = 12, units = "cm")
 
 
 #########################################################################################
@@ -3136,7 +3173,7 @@ plotSpearAuto <- egg::ggarrange(
   label.args = list(gp = gpar(font = 4, fontsize = 12), x = unit(1, "line"), hjust = 1)
 )
 
-ggsave(file.path(saveLocation_1D, "plotSpearAuto.jpeg"), plotSpearAuto, width = 10, height = 12, units = "cm")
+ggsave(file.path(locationFigs, "plotSpearAuto.jpeg"), plotSpearAuto, width = 10, height = 12, units = "cm")
 ```
 
 
